@@ -1,0 +1,8 @@
+com/dc/elastic/model/Product.class
+com/dc/elastic/ElasticApplication.class
+com/dc/elastic/EsConfig.class
+com/dc/elastic/model/ProductDTO.class
+com/dc/elastic/service/ProductServiceImpl$1.class
+com/dc/elastic/service/ProductService.class
+com/dc/elastic/controller/ElasticSearchController.class
+com/dc/elastic/service/ProductServiceImpl.class

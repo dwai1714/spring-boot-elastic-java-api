@@ -17,7 +17,7 @@ public class Product implements Serializable {
 		this.place = place;
 	}
 
-	public Product(String id, String place, String category, String type, Map<String, String> attributes, String code) {
+	public Product(String id, String place, String category, String type, Map<String, Object> attributes, String code) {
 		this.id = id;
 		this.place = place;
 		this.category = category;
@@ -51,15 +51,15 @@ public class Product implements Serializable {
 		this.code = code;
 	}
 
-	public Map<String, String> getAttributes() {
+	public Map<String, Object> getAttributes() {
 		return attributes;
 	}
 
-	public void setAttributes(Map<String, String> attributes) {
+	public void setAttributes(Map<String, Object> attributes) {
 		this.attributes = attributes;
 	}
 
-	Map<String, String> attributes;
+	Map<String, Object> attributes;
 	private String code;
 
 	public Product() {
