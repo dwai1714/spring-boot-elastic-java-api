@@ -9,4 +9,5 @@ import com.dc.elastic.model.ProductDTO;
 public interface ProductService {
 	public ProductDTO getProductDTO(String type);
 	public List getTypes();
+	public ProductDTO getProductDTOFullText(String fullText);
 	}

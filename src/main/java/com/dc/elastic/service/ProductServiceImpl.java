@@ -8,11 +8,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
+import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
@@ -47,6 +48,10 @@ public class ProductServiceImpl implements ProductService {
 		requestAttOrderBuilder.setQuery(attQB);
 		SearchResponse attResponse = requestAttOrderBuilder.get();
 		SearchHit[] hits = attResponse.getHits().getHits();
+		if (hits.length == 0) {
+			return pDTO;
+		}
+
 		Map<String, Object> attSource = hits[0].getSourceAsMap();
 		Map<String, Integer> order = (Map<String, Integer>) attSource.get("order");
 
@@ -64,14 +69,14 @@ public class ProductServiceImpl implements ProductService {
 
 		for (Map.Entry<String, Integer> entry : list) {
 
-			String termString =  entry.getKey();
+			String termString = entry.getKey();
 
 			if (getDataType("attributes", entry.getKey()).equals("text"))
-				aggregation.subAggregation(AggregationBuilders.terms( entry.getKey())
-						.field("attributes." + entry.getKey() + ".keyword"));
+				aggregation.subAggregation(
+						AggregationBuilders.terms(entry.getKey()).field("attributes." + entry.getKey() + ".keyword"));
 			else
 				aggregation.subAggregation(
-						AggregationBuilders.terms( entry.getKey()).field("attributes." + entry.getKey()));
+						AggregationBuilders.terms(entry.getKey()).field("attributes." + entry.getKey()));
 		}
 
 		NestedQueryBuilder nqb = QueryBuilders.nestedQuery("attributes",
@@ -90,18 +95,16 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, Map<String, Long>> facets = new HashMap<>();
 
 		for (Map.Entry<String, Integer> entry : list) {
-			Terms terms = agg.getAggregations().get( entry.getKey());
+			Terms terms = agg.getAggregations().get(entry.getKey());
 			Map<String, Long> buckets = new HashMap();
 			terms.getBuckets().forEach(bucket -> {
 				buckets.put(bucket.getKeyAsString(), bucket.getDocCount());
 
 			});
 			if (buckets.size() != 0)
-			facets.put( entry.getKey(), buckets);
+				facets.put(entry.getKey(), buckets);
 
-			// System.out.println(entry.getKey() + " ==== " + entry.getValue());
 		}
-		// Map<String, Map<String, Long>> attributes;
 
 		hits = response.getHits().getHits();
 		List<Product> products = new ArrayList<Product>();
@@ -119,14 +122,33 @@ public class ProductServiceImpl implements ProductService {
 			products.add(product);
 
 		});
-
-		logger.info("Products is " + products);
-
+		logger.info("Query Done");
 		logger.info("agg.getDocCount() is " + agg.getDocCount());
 		pDTO.setProducts(products);
 		pDTO.setAttributes(facets);
 		pDTO.setOrder(order);
 		return pDTO;
+	}
+
+	@Override
+	public ProductDTO getProductDTOFullText(String fullText) {
+		SearchRequestBuilder searchqueryBuilder = client.prepareSearch("my_index").setTypes("products");
+
+//				.setQuery(QueryBuilders.queryStringQuery(fullText));
+//		NestedQueryBuilder nestedQueryBuilder = QueryBuilders.nestedQuery("attributes",
+//				QueryBuilders.boolQuery().must(QueryBuilders.queryStringQuery(fullText)), ScoreMode.Avg);
+//		searchqueryBuilder.setQuery(nestedQueryBuilder);
+
+		MultiSearchResponse searchResponse = client.prepareMultiSearch().add(searchqueryBuilder).get();
+
+		long nbHits = 0;
+		for (MultiSearchResponse.Item item : searchResponse.getResponses()) {
+			SearchResponse response = item.getResponse();
+			logger.info("Response is " + response);
+			nbHits += response.getHits().getTotalHits();
+		}
+
+		return null;
 	}
 
 	@Override
@@ -140,10 +162,7 @@ public class ProductServiceImpl implements ProductService {
 			String keyString = bucket.getKeyAsString();
 			types.add(keyString);
 
-			logger.info("KeyString " + keyString);
-
 		});
-		logger.info("KeyString List is " + types);
 
 		return types;
 

@@ -31,12 +31,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.dc.elastic.service.ProductService;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class ElasticTests {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Autowired
 	private TransportClient client;
+	
+	@Autowired
+	private ProductService service;
 
 	@Test
 	public void doBasicTest() {
@@ -147,6 +152,12 @@ public class ElasticTests {
 
 			});
 			logger.info("KeyString List is " + types );
+
+	}
+
+	@Test
+	public void getFullTextTest() {
+		service.getProductDTOFullText("Software");
 
 	}
 
