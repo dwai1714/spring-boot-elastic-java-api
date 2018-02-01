@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Implementation-Title: blueprint
+Implementation-Version: 0.0.1-SNAPSHOT
+Built-By: dwai1714
+Implementation-Vendor-Id: com.dc
+Spring-Boot-Version: 2.0.0.M7
+Main-Class: org.springframework.boot.loader.JarLauncher
+Start-Class: com.dc.elastic.ElasticApplication
+Spring-Boot-Classes: BOOT-INF/classes/
+Spring-Boot-Lib: BOOT-INF/lib/
+Created-By: Apache Maven 3.5.0
+Build-Jdk: 1.8.0_141
+Implementation-URL: http://projects.spring.io/spring-boot/spring-boot-
+ starter-parent/elastic/
+

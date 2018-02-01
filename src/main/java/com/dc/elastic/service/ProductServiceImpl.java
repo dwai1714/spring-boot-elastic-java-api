@@ -1,5 +1,9 @@
 package com.dc.elastic.service;
 
+import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
+import static org.elasticsearch.index.query.QueryBuilders.nestedQuery;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +21,7 @@ import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -32,6 +37,7 @@ import org.springframework.stereotype.Service;
 
 import com.dc.elastic.model.Product;
 import com.dc.elastic.model.ProductDTO;
+import com.dc.elastic.model.SearchQueryDTO;
 
 @Service
 
@@ -133,22 +139,54 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public ProductDTO getProductDTOFullText(String fullText) {
 		SearchRequestBuilder searchqueryBuilder = client.prepareSearch("my_index").setTypes("products");
+		SearchRequestBuilder PlainBuilder = client.prepareSearch("my_index").setTypes("products")
+				.setQuery((QueryBuilders.queryStringQuery(fullText)));
 
-//				.setQuery(QueryBuilders.queryStringQuery(fullText));
-//		NestedQueryBuilder nestedQueryBuilder = QueryBuilders.nestedQuery("attributes",
-//				QueryBuilders.boolQuery().must(QueryBuilders.queryStringQuery(fullText)), ScoreMode.Avg);
-//		searchqueryBuilder.setQuery(nestedQueryBuilder);
+		ProductDTO pDTO = new ProductDTO();
 
-		MultiSearchResponse searchResponse = client.prepareMultiSearch().add(searchqueryBuilder).get();
+		NestedQueryBuilder nestedQueryBuilder = QueryBuilders.nestedQuery("attributes",
+				QueryBuilders.boolQuery().must(QueryBuilders.queryStringQuery(fullText)), ScoreMode.Avg);
 
-		long nbHits = 0;
+		searchqueryBuilder.setQuery(nestedQueryBuilder);
+
+		MultiSearchResponse searchResponse = client.prepareMultiSearch().add(PlainBuilder).add(searchqueryBuilder)
+				.get();
+
 		for (MultiSearchResponse.Item item : searchResponse.getResponses()) {
 			SearchResponse response = item.getResponse();
 			logger.info("Response is " + response);
-			nbHits += response.getHits().getTotalHits();
+			SearchHit[] hits = response.getHits().getHits();
+			List<Product> products = new ArrayList<Product>();
+			Arrays.asList(hits).forEach(hit -> {
+				Map<String, Object> sourceObject = hit.getSourceAsMap();
+				Map<String, Object> attributes = (Map<String, Object>) sourceObject.get("attributes");
+
+				Product product = new Product();
+				product.setType(sourceObject.get("Type").toString());
+				product.setPlace(sourceObject.get("Place").toString());
+				product.setCategory(sourceObject.get("Category").toString());
+				product.setId(hit.getId());
+				product.setAttributes(attributes);
+
+				products.add(product);
+
+			});
+			logger.info("Query Done");
+			if (null != pDTO.getProducts()) {
+				List<Product> productsOld = pDTO.getProducts();
+				for (Product product : products) {
+					productsOld.add(product);
+				}
+				pDTO.setProducts(productsOld);
+
+			} else {
+				pDTO.setProducts(products);
+
+			}
+
 		}
 
-		return null;
+		return pDTO;
 	}
 
 	@Override
@@ -185,5 +223,123 @@ public class ProductServiceImpl implements ProductService {
 		return typeIs;
 
 	}
+
+	@Override
+	public ProductDTO getProductDTOMatchQuery(SearchQueryDTO searchQueryDTO) {
+
+		ProductDTO pDTO = new ProductDTO();
+
+		SearchRequestBuilder requestAttOrderBuilder = client.prepareSearch("my_ord_index").setTypes("attOrder");
+		QueryBuilder attQB = QueryBuilders.boolQuery()
+				.must(QueryBuilders.matchQuery("Type", searchQueryDTO.getProductType()));
+		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO);
+
+		requestAttOrderBuilder.setQuery(attQB);
+		SearchResponse attResponse = requestAttOrderBuilder.get();
+		SearchHit[] hits = attResponse.getHits().getHits();
+		if (hits.length == 0) {
+			logger.info("hits is zero");
+			return pDTO;
+		}
+
+		Map<String, Object> attSource = hits[0].getSourceAsMap();
+		Map<String, Integer> order = (Map<String, Integer>) attSource.get("order");
+
+		Set<Entry<String, Integer>> set = order.entrySet();
+		List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>(set);
+		Collections.sort(list, new Comparator<Map.Entry<String, Integer>>() {
+			public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+				return (o1.getValue()).compareTo(o2.getValue());// Ascending order
+			}
+		});
+
+		logger.info("Preparing query");
+		AggregationBuilder aggregation = AggregationBuilders.nested("all_attributes", "attributes");
+
+		for (Map.Entry<String, Integer> entry : list) {
+
+			String termString = entry.getKey();
+
+			if (getDataType("attributes", entry.getKey()).equals("text"))
+				aggregation.subAggregation(
+						AggregationBuilders.terms(entry.getKey()).field("attributes." + entry.getKey() + ".keyword"));
+			else
+				aggregation.subAggregation(
+						AggregationBuilders.terms(entry.getKey()).field("attributes." + entry.getKey()));
+		}
+
+		SearchResponse response = plainQBuilder.get();
+
+		Nested agg = response.getAggregations().get("all_attributes");
+		Map<String, Map<String, Long>> facets = new HashMap<>();
+
+		for (Map.Entry<String, Integer> entry : list) {
+			Terms terms = agg.getAggregations().get(entry.getKey());
+			Map<String, Long> buckets = new HashMap();
+			terms.getBuckets().forEach(bucket -> {
+				buckets.put(bucket.getKeyAsString(), bucket.getDocCount());
+
+			});
+			if (buckets.size() != 0)
+				facets.put(entry.getKey(), buckets);
+
+		}
+
+		hits = response.getHits().getHits();
+		List<Product> products = new ArrayList<Product>();
+		Arrays.asList(hits).forEach(hit -> {
+			Map<String, Object> sourceObject = hit.getSourceAsMap();
+			Map<String, Object> attributes = (Map<String, Object>) sourceObject.get("attributes");
+
+			Product product = new Product();
+			product.setType(sourceObject.get("Type").toString());
+			product.setPlace(sourceObject.get("Place").toString());
+			product.setCategory(sourceObject.get("Category").toString());
+			product.setId(hit.getId());
+			product.setAttributes(attributes);
+
+			products.add(product);
+
+		});
+		logger.info("Query Done");
+		logger.info("agg.getDocCount() is " + agg.getDocCount());
+		pDTO.setProducts(products);
+		pDTO.setAttributes(facets);
+		pDTO.setOrder(order);
+		return pDTO;
+
+	}
+
+	private SearchRequestBuilder createQueries(SearchQueryDTO searchQueryDTO) {
+		BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
+
+		Set<String> keys = searchQueryDTO.getAttributes().keySet();
+		for (String key : keys) {
+			List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
+			BoolQueryBuilder valueVuilder = boolQuery();
+			if (null != attributeValuesList && searchQueryDTO.getAttributes().size() > 0) {
+				for (String value : attributeValuesList) {
+					valueVuilder.should(QueryBuilders.nestedQuery("attributes",
+							QueryBuilders.boolQuery().must(queryBuilder), ScoreMode.Avg));
+					
+				}
+				queryBuilder.must(valueVuilder);
+
+			}
+
+		}
+
+//		NestedQueryBuilder nestedQueryBuilder = QueryBuilders.nestedQuery("attributes",
+//				QueryBuilders.boolQuery().must(queryBuilder), ScoreMode.Avg);
+		SearchRequestBuilder plainBuilder = client.prepareSearch("my_index").setTypes("products")
+				.setQuery((QueryBuilders.boolQuery()
+						.must(QueryBuilders.matchQuery("Type", searchQueryDTO.getProductType()))
+						.must(queryBuilder)));
+
+		return plainBuilder;
+
+	}
+	
+
 
 }

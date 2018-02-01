@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsRespon
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -31,6 +33,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.dc.elastic.model.ProductDTO;
+import com.dc.elastic.model.SearchQueryDTO;
 import com.dc.elastic.service.ProductService;
 
 @RunWith(SpringRunner.class)
@@ -157,8 +161,45 @@ public class ElasticTests {
 
 	@Test
 	public void getFullTextTest() {
-		service.getProductDTOFullText("Software");
+		service.getProductDTOFullText("Fans LG");
 
 	}
+	
+	
+	@Test
+	public void getProductDTOMatchQueryTest() {
+		SearchQueryDTO sDTO = new SearchQueryDTO();
+		sDTO.setProductType("Fans");
+		
+		List<String> values = new ArrayList<String>();
+		values.add("Honeywell");
+		values.add("Black and Decker");
+		
+		Map<String,List<String>> attributes = new HashMap<String,List<String>>();
+		attributes.put("Brand",values );
+		sDTO.setAttributes(attributes);
+		ProductDTO productDTO = service.getProductDTOMatchQuery(sDTO);
+		logger.info("Preparing query result "+productDTO);
 
+	}
+	
+	@Test
+	public void someCrap()
+	{
+		SearchRequestBuilder requestBuilder = client.prepareSearch("my_index").setTypes("products");
+		BoolQueryBuilder myQB = QueryBuilders.boolQuery();
+		
+		myQB.must(QueryBuilders.matchQuery("attributes.Brand", "Orient, Black and Decker"));
+		myQB.must(QueryBuilders.matchQuery("attributes.Fan Color", "white"));
+		
+		NestedQueryBuilder nqb = QueryBuilders.nestedQuery("attributes",
+				myQB
+				, ScoreMode.Max);
+		QueryBuilder qb = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("Type", "Fans")).must(nqb);
+		requestBuilder.setQuery(qb);
+		SearchResponse attResponse = requestBuilder.get();
+		logger.info("response is " + attResponse);
+	
+
+	}
 }
