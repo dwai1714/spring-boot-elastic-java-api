@@ -1,4 +1,4 @@
-package com.dc.elastic.controller;
+package com.elastic.controller;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.dc.elastic.model.ProductDTO;
-import com.dc.elastic.model.SearchQueryDTO;
-import com.dc.elastic.service.ProductService;
+import com.elastic.model.ProductDTO;
+import com.elastic.model.SearchQueryDTO;
+import com.elastic.service.ProductService;
 
 @CrossOrigin
 @RestController

@@ -1,4 +1,4 @@
-package com.dc.elastic.model;
+package com.elastic.model;
 
 
 import java.util.List;

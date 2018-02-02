@@ -1,11 +1,10 @@
-package com.dc.elastic.service;
+package com.elastic.service;
 
 
 import java.util.List;
-import java.util.Map;
 
-import com.dc.elastic.model.ProductDTO;
-import com.dc.elastic.model.SearchQueryDTO;
+import com.elastic.model.ProductDTO;
+import com.elastic.model.SearchQueryDTO;
 
 public interface ProductService {
 	public ProductDTO getProductDTO(String type);

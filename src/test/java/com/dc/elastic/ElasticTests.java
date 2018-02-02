@@ -33,9 +33,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import com.dc.elastic.model.ProductDTO;
-import com.dc.elastic.model.SearchQueryDTO;
-import com.dc.elastic.service.ProductService;
+import com.elastic.model.ProductDTO;
+import com.elastic.model.SearchQueryDTO;
+import com.elastic.service.ProductService;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest

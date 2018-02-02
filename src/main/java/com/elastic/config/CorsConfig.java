@@ -1,4 +1,4 @@
-package com.dc.elastic;
+package com.elastic.config;
 
 import java.io.IOException;
 
