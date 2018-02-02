@@ -1,9 +1,0 @@
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/service/ProductServiceImpl.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/model/SearchQueryDTO.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/ElasticApplication.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/controller/ElasticSearchController.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/service/ProductService.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/model/ProductDTO.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/model/Product.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/EsConfig.java
-/Users/dwai1714/workspace/elastic-home/spring-boot-elastic-java-api/src/main/java/com/dc/elastic/CorsConfig.java
