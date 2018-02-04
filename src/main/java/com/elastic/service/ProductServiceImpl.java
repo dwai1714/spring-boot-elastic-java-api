@@ -279,7 +279,7 @@ public class ProductServiceImpl implements ProductService {
 	public List getTypes() {
 		SearchRequestBuilder requestBuilder = client.prepareSearch("my_index").setTypes("products");
 		SearchResponse response = requestBuilder
-				.addAggregation(AggregationBuilders.terms("by_types").field("Type.keyword")).execute().actionGet();
+				.addAggregation(AggregationBuilders.terms("by_types").field("type.keyword")).execute().actionGet();
 		Terms terms = response.getAggregations().get("by_types");
 		List types = new ArrayList();
 		terms.getBuckets().forEach(bucket -> {

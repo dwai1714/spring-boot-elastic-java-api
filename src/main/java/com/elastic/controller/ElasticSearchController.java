@@ -38,7 +38,6 @@ public class ElasticSearchController {
 
 	@RequestMapping(method = RequestMethod.POST, value = "/partial", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ProductDTO doPartialSearch(@RequestBody SearchQueryDTO searchQueryDTO) throws Exception {
-		// SearchQueryDTO searchDTO= commonUtils.createSearchQueryDTO(queryMap);
 		ProductDTO productDTO = productService.getProductDTOMatchQuery(searchQueryDTO);
 		return productDTO;
 	}
