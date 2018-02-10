@@ -7,6 +7,33 @@ public class Product implements Serializable {
 	private String id;
 	private String place;
 	private String category;
+
+	public String getProductType() {
+		return productType;
+	}
+
+	public Product(String place, String category, String productType) {
+		this.place = place;
+		this.category = category;
+		this.productType = productType;
+	}
+
+	public Product(String id, String place, String category, String productType, String type, Map<String, Object> attributes, String code) {
+
+		this.id = id;
+		this.place = place;
+		this.category = category;
+		this.productType = productType;
+		this.type = type;
+		this.attributes = attributes;
+		this.code = code;
+	}
+
+	public void setProductType(String productType) {
+		this.productType = productType;
+	}
+
+	private String productType;
 	private String type;
 
 	public String getPlace() {

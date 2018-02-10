@@ -1,6 +1,7 @@
 package com.elastic.controller;
 
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -41,6 +42,13 @@ public class ElasticSearchController {
 		// SearchQueryDTO searchDTO= commonUtils.createSearchQueryDTO(queryMap);
 		ProductDTO productDTO = productService.getProductDTOMatchQuery(searchQueryDTO);
 		return productDTO;
+	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/upload", produces = MediaType.APPLICATION_JSON_VALUE)
+	public void doUpload() throws Exception {
+		// SearchQueryDTO searchDTO= commonUtils.createSearchQueryDTO(queryMap);
+		productService.readExcel();
+	//	return productDTO;
 	}
 
 }
