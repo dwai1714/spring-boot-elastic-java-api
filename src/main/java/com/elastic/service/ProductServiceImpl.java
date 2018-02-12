@@ -146,7 +146,7 @@ public class ProductServiceImpl implements ProductService {
 	 */
 	private SearchRequestBuilder createProductSearchRequestBuilder(String type,
 			List<Entry<String, Integer>> orderList) {
-		SearchRequestBuilder requestBuilder = client.prepareSearch("my_index").setTypes("products");
+		SearchRequestBuilder requestBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 
 		NestedQueryBuilder nqb = QueryBuilders.nestedQuery("attributes",
@@ -219,7 +219,7 @@ public class ProductServiceImpl implements ProductService {
 	 * @return
 	 */
 	private SearchRequestBuilder getAttributeSearchRequestBuilder(String type) {
-		SearchRequestBuilder requestAttOrderBuilder = client.prepareSearch("my_ord_index").setTypes("attOrder");
+		SearchRequestBuilder requestAttOrderBuilder = client.prepareSearch(ATT_ORDER_INDEX_NAME).setTypes(ORDER_TYPE_NAME);
 		QueryBuilder attQB = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("Type", type));
 		requestAttOrderBuilder.setQuery(attQB);
 		return requestAttOrderBuilder;
@@ -227,8 +227,8 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public ProductDTO getProductDTOFullText(String fullText) {
-		SearchRequestBuilder searchqueryBuilder = client.prepareSearch("my_index").setTypes("products");
-		SearchRequestBuilder PlainBuilder = client.prepareSearch("my_index").setTypes("products")
+		SearchRequestBuilder searchqueryBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
+		SearchRequestBuilder PlainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
 				.setQuery((QueryBuilders.queryStringQuery(fullText)));
 
 		ProductDTO pDTO = new ProductDTO();
@@ -291,7 +291,7 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public List getTypes() {
-		SearchRequestBuilder requestBuilder = client.prepareSearch("my_index").setTypes("products");
+		SearchRequestBuilder requestBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
 		SearchResponse response = requestBuilder
 				.addAggregation(AggregationBuilders.terms("by_types").field("type.keyword")).execute().actionGet();
 		Terms terms = response.getAggregations().get("by_types");
@@ -308,12 +308,12 @@ public class ProductServiceImpl implements ProductService {
 
 	public String getDataType(String nestedField, String field) {
 
-		GetFieldMappingsResponse response = client.admin().indices().prepareGetFieldMappings().addIndices("my_index")
-				.addTypes("products").setFields(nestedField + "." + field).get();
+		GetFieldMappingsResponse response = client.admin().indices().prepareGetFieldMappings().addIndices(INDEX_NAME)
+				.addTypes(TYPE_NAME).setFields(nestedField + "." + field).get();
 
 		Map<String, Object> fieldSource;
 		try {
-			fieldSource = response.fieldMappings("my_index", "products", nestedField + "." + field).sourceAsMap();
+			fieldSource = response.fieldMappings(INDEX_NAME, TYPE_NAME, nestedField + "." + field).sourceAsMap();
 		} catch (Exception e) {
 			// Bad Code but will figure later
 			return "text";
@@ -375,7 +375,7 @@ public class ProductServiceImpl implements ProductService {
 
 			}
 		}
-		SearchRequestBuilder plainBuilder = client.prepareSearch("my_index").setTypes("products")
+		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
 				.setQuery(QueryBuilders.boolQuery()
 						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).must(queryBuilder));
 
@@ -387,7 +387,7 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public void CreateData(String place, String type, String category, String excelFileName) {
+	public void CreateData(String place, String category, String type, String excelFileName) {
 		ExcelUtility excelutil = new ExcelUtility();
 		excelutil.setFileName(excelFileName);
 		List<String> headers;
@@ -407,13 +407,13 @@ public class ProductServiceImpl implements ProductService {
 				Map<String, Map<String, String>> myMap = new HashMap();
 				myMap.put("attributes", excelMap);
 				String json = gson.toJson(myMap);
-				IndexRequestBuilder req = client.prepareIndex("my_kala", "products");
+				IndexRequestBuilder req = client.prepareIndex(INDEX_NAME, TYPE_NAME);
 				req.setSource(topJson, XContentType.JSON); // .setSource(json, XContentType.JSON);
 				IndexResponse response = req.get();
 				req.setId(response.getId());
 				UpdateRequest updateRequest = new UpdateRequest();
-				updateRequest.index("my_kala");
-				updateRequest.type("products");
+				updateRequest.index(INDEX_NAME);
+				updateRequest.type(TYPE_NAME);
 				updateRequest.id(response.getId());
 				updateRequest.doc(json, XContentType.JSON);
 				client.update(updateRequest).get();
@@ -426,10 +426,10 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public void CreateSameTypeDataWithMultipleExcel(String place, String type, String category,
+	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type,
 			List<String> excelFileNames) {
 		for (int i = 0; i < excelFileNames.size(); i++) {
-			CreateData(place, type, category, excelFileNames.get(i));
+			CreateData(place, category, type, excelFileNames.get(i));
 		}
 
 	}
