@@ -1,23 +1,26 @@
 package com.elastic.service;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.lucene.search.join.ScoreMode;
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -35,7 +38,8 @@ import org.springframework.stereotype.Service;
 import com.elastic.model.Product;
 import com.elastic.model.ProductDTO;
 import com.elastic.model.SearchQueryDTO;
-import org.springframework.util.StringUtils;
+import com.elastic.util.ExcelUtility;
+import com.google.gson.Gson;
 
 @Service
 
@@ -43,51 +47,32 @@ public class ProductServiceImpl implements ProductService {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Autowired
 	private TransportClient client;
-	 List<String> styles = new ArrayList<String>();
-	 List<String> bowlSaped = new ArrayList<String>();
-	 List<String> height = new ArrayList<String>();
-	 List<String> brand = new ArrayList<String>();
-	 List<String> features = new ArrayList<String>();
-	 List<String> types = new ArrayList<String>();
-
-	 List<String> featuresBidets = new ArrayList<String>();
-	 List<String> featuresUrinals = new ArrayList<String>();
-	 List<String> selector12 = new ArrayList<String>();
-	 List<String> selector13 = new ArrayList<String>();
-	 List<String> selector14 = new ArrayList<String>();
-	 List<String> selector15 = new ArrayList<String>();
-	 List<String> selector16 = new ArrayList<String>();
-
-	static List<String> colors = new ArrayList<String>();
-
 
 	@Override
 	public ProductDTO getProductDTO(String type) {
 		ProductDTO pDTO = new ProductDTO();
 		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(type);
-		//check attributes order
+		// check attributes order
 		SearchResponse attResponse = requestAttOrderBuilder.get();
 		SearchHit[] hits = attResponse.getHits().getHits();
 		if (hits.length == 0) {
 			return pDTO;
 		}
 
-		//getOrder list
+		// getOrder list
 		List<Entry<String, Integer>> orderList = createOrderList(hits[0]);
-		//actual order of attributes
+		// actual order of attributes
 		Map<String, Integer> order = getOrder(hits[0]);
 
-
 		logger.info("Preparing query");
-		SearchRequestBuilder requestBuilder = createProductSearchRequestBuilder(type,orderList);
+		SearchRequestBuilder requestBuilder = createProductSearchRequestBuilder(type, orderList);
 
 		// Get response
 		logger.info("Executing query");
 		SearchResponse response = requestBuilder.get();
 
 		//
-		Map<String, Map<String, Long>> facets = getFacets(response,orderList);
-
+		Map<String, Map<String, Long>> facets = getFacets(response, orderList);
 
 		createSearchResult(pDTO, order, response, facets);
 		return pDTO;
@@ -95,12 +80,14 @@ public class ProductServiceImpl implements ProductService {
 
 	/**
 	 * This method will create the search result from the search response
+	 * 
 	 * @param pDTO
 	 * @param order
 	 * @param response
 	 * @param facets
 	 */
-	private void createSearchResult(ProductDTO pDTO, Map<String, Integer> order, SearchResponse response, Map<String, Map<String, Long>> facets) {
+	private void createSearchResult(ProductDTO pDTO, Map<String, Integer> order, SearchResponse response,
+			Map<String, Map<String, Long>> facets) {
 		SearchHit[] hits;
 		hits = response.getHits().getHits();
 		List<Product> products = new ArrayList<Product>();
@@ -126,13 +113,13 @@ public class ProductServiceImpl implements ProductService {
 
 	/**
 	 * This method will buiuld factes/aggragations
+	 * 
 	 * @param response
 	 * @param orderList
 	 * @return
 	 */
-	private Map<String,Map<String,Long>> getFacets(SearchResponse response, List<Entry<String, Integer>> orderList) {
-		Map<String, Map<String, Long>> facets = new HashMap<String,Map<String,Long>>();
-		//Nested agg = response.getAggregations().get("all_attributes");
+	private Map<String, Map<String, Long>> getFacets(SearchResponse response, List<Entry<String, Integer>> orderList) {
+		Map<String, Map<String, Long>> facets = new HashMap<String, Map<String, Long>>();
 		Nested agg = response.getAggregations().get("all_attributes");
 		for (Map.Entry<String, Integer> entry : orderList) {
 			Terms terms = agg.getAggregations().get(entry.getKey());
@@ -150,12 +137,15 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	/**
-	 * This method will create product search request builder with aggregations for single critera.
+	 * This method will create product search request builder with aggregations for
+	 * single critera.
+	 * 
 	 * @param type
 	 * @param orderList
 	 * @return
 	 */
-	private SearchRequestBuilder createProductSearchRequestBuilder(String type, List<Entry<String, Integer>> orderList) {
+	private SearchRequestBuilder createProductSearchRequestBuilder(String type,
+			List<Entry<String, Integer>> orderList) {
 		SearchRequestBuilder requestBuilder = client.prepareSearch("my_index").setTypes("products");
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 
@@ -171,11 +161,11 @@ public class ProductServiceImpl implements ProductService {
 
 	/**
 	 * This method will build the aggregation builder with all the attributes
+	 * 
 	 * @param orderList
 	 * @return
 	 */
 	private AggregationBuilder getAggregationBuilder(List<Entry<String, Integer>> orderList) {
-		//AggregationBuilder aggregation = AggregationBuilders.significantTerms("type").field("type"+".keyword");
 		AggregationBuilder aggregation = AggregationBuilders.nested("all_attributes", "attributes");
 
 		for (Entry<String, Integer> entry : orderList) {
@@ -194,10 +184,11 @@ public class ProductServiceImpl implements ProductService {
 
 	/**
 	 * This method will create the order list
+	 * 
 	 * @param hit
 	 * @return
 	 */
-	private List<Entry<String,Integer>> createOrderList(SearchHit hit) {
+	private List<Entry<String, Integer>> createOrderList(SearchHit hit) {
 		Map<String, Integer> order = getOrder(hit);
 
 		Set<Entry<String, Integer>> set = order.entrySet();
@@ -212,7 +203,8 @@ public class ProductServiceImpl implements ProductService {
 
 	/**
 	 * This method will get the raw order which needs to be processed further
- 	 * @param hit
+	 * 
+	 * @param hit
 	 * @return
 	 */
 	private Map<String, Integer> getOrder(SearchHit hit) {
@@ -221,7 +213,8 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	/**
-	 *Attributes search query builder
+	 * Attributes search query builder
+	 * 
 	 * @param type
 	 * @return
 	 */
@@ -254,7 +247,9 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	/**
-	 * This method will be used to get the multi search response for full text search.
+	 * This method will be used to get the multi search response for full text
+	 * search.
+	 * 
 	 * @param pDTO
 	 * @param searchResponse
 	 */
@@ -341,239 +336,24 @@ public class ProductServiceImpl implements ProductService {
 			logger.info("hits is zero");
 			return pDTO;
 		}
-		//getOrder list
+		// getOrder list
 		List<Entry<String, Integer>> orderList = createOrderList(hits[0]);
-		//actual order of attributes
+		// actual order of attributes
 		Map<String, Integer> order = getOrder(hits[0]);
-		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO,orderList);
+		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO, orderList);
 		logger.info("Preparing query");
 
 		SearchResponse response = plainQBuilder.get();
-		Map<String, Map<String, Long>> facets = getFacets(response,orderList);
-
+		Map<String, Map<String, Long>> facets = getFacets(response, orderList);
 
 		createSearchResult(pDTO, order, response, facets);
 		return pDTO;
 
 	}
 
-	@Override
-	public void readExcel() throws Exception {
-		ArrayList<HashMap<String, Object>> productList = new ArrayList<HashMap<String, Object>>();
-				initializeMaps();
-			int count =0;
-			for(String type:types){
-				if(count==0) {
-					createToiletProducts(type,productList);
-					}
-				else if(count==1){
-				createBidetsProducts(type,productList);
-			}else if(count==2){
-				createUrinalProducts(type,productList);
-			}else{
-			createAccessoriesProducts(type,productList);
-			}
-			count++;
-	}
-		int productCount = 1;
-		BulkRequestBuilder brb = client.prepareBulk();
-		for(HashMap<String,Object> product:productList){
-				if(productCount<5000){
-					brb.add(client.prepareIndex("my_index", "products").setSource(product));
-					productCount++;
-				}else{
-					BulkResponse bulkResponse = brb.execute().actionGet();
-					brb = null;
-					brb = client.prepareBulk();
-					productCount = 1;
-				}
-		}
-		BulkResponse bulkResponse = brb.execute().actionGet();
-
-	}
-
-	private void initializeMaps() throws Exception {
-		InputStream ExcelFileToRead = new FileInputStream("D:\\shravan\\files\\Book1.xlsx");
-		XSSFWorkbook wb = new XSSFWorkbook(ExcelFileToRead);
-		Set<Integer> elements = new HashSet<Integer>();
-		ArrayList<HashMap<String,Object>> hMap = new ArrayList<HashMap<String,Object>>();
-		XSSFSheet sheet = wb.getSheetAt(0);
-		XSSFRow row;
-		XSSFCell cell;
-
-		Iterator rows = sheet.rowIterator();
-		int rowCount = 0;
-
-		//loop through rows
-		while (rows.hasNext())
-        {
-            row = (XSSFRow) rows.next();
-            if(rowCount==0||rowCount==1){
-                rowCount++;
-                continue;
-            }
-            Iterator cells = row.cellIterator();
-            int col =0;
-            while (cells.hasNext()) {
-                cell = (XSSFCell) cells.next();
-                if(col<13){
-                    createProduct(cell,cell.getColumnIndex());
-                }
-                col++;
-            }//whil1e
-            rowCount++;
-
-        }//while
-	//	return hMap;
-	}
-
-	private  void createAccessoriesProducts(String type,ArrayList<HashMap<String,Object>> alProducts) {
-        for(String selector:selector12) {
-            for (String feature : featuresBidets) {
-                for (String color : colors) {
-                    for (String brand : brand) {
-                        HashMap<String, Object> map = new HashMap<String, Object>();
-                        HashMap<String, Object> hashMap = createBaseMap(type);
-                        map.put("Brand", brand);
-                        map.put("Features", feature);
-                        map.put("Color", color);
-                        map.put("PartsFor", selector);
-
-                        hashMap.put("attributes", map);
-                        alProducts.add(hashMap);
-                    }
-                }
-            }
-        }
-	}
-
-	private  HashMap<String, Object> createBaseMap(String type) {
-		HashMap<String,Object> hashMap = new HashMap<String,Object>();
-		hashMap.put("place","Home&Garden");
-		hashMap.put("category","BathRoom");
-		hashMap.put("productType","Toilets");
-		hashMap.put("type",type);
-		return hashMap;
-	}
-
-	private  void createBidetsProducts(String type,ArrayList<HashMap<String,Object>> alProducts) {
-			for(String feature:featuresBidets){
-				for(String color:colors) {
-					for(String brand:brand){
-						HashMap<String,Object> map = new HashMap<String,Object>();
-						HashMap<String, Object> hashMap = createBaseMap(type);
-						map.put("Brand",brand);
-						map.put("Features",feature);
-						map.put("Color",color);
-						hashMap.put("attributes",map);
-						alProducts.add(hashMap);
-					}
-				}
-			}
-		}
-
-		private  void createUrinalProducts(String type,ArrayList<HashMap<String,Object>> alProducts) {
-			for(String feature:featuresUrinals){
-				for(String color:colors) {
-					for(String brand:brand){
-						HashMap<String,Object> map = new HashMap<String,Object>();
-						HashMap<String, Object> hashMap = createBaseMap(type);
-						map.put("Brand",brand);
-						map.put("Features",feature);
-						map.put("Color",color);
-						hashMap.put("attributes",map);
-						alProducts.add(hashMap);
-					}
-				}
-			}
-		}
-
-		private  void createToiletProducts(String type,ArrayList<HashMap<String,Object>> alProducts) {
-			for(String style:styles){
-				for(String bowl:bowlSaped) {
-					for(String height:height){
-						for(String feature:features){
-							for(String brands:brand){
-								for(String color:colors){
-									HashMap<String,Object> map = new HashMap<String,Object>();
-									HashMap<String, Object> hashMap = createBaseMap(type);
-									map.put("Style",style);
-									map.put("Brand",brands);
-									map.put("Features",feature);
-									map.put("Color",color);
-									map.put("Shape",bowl);
-									map.put("Part Of Height",height);
-									hashMap.put("attributes",map);
-									alProducts.add(hashMap);
-
-								}
-
-							}
-						}
-					}
-				}
-			}
-
-			//return alProducts;
-		}
-
-		private  void createProduct(XSSFCell cell, int col) throws Exception{
-
-
-			if(!StringUtils.isEmpty(cell.getStringCellValue())) {
-				switch (col) {
-					case 0:
-						types.add(cell.getStringCellValue());
-						break;
-					case 1:
-						styles.add(cell.getStringCellValue());
-						break;
-					case 2:
-						bowlSaped.add(cell.getStringCellValue());
-						break;
-					case 3:
-						height.add(cell.getStringCellValue());
-						break;
-					case 4:
-						features.add(cell.getStringCellValue());
-						break;
-					case 5:
-						featuresBidets.add(cell.getStringCellValue());
-						break;
-					case 6:
-						featuresUrinals.add(cell.getStringCellValue());
-						break;
-					case 7:
-						colors.add(cell.getStringCellValue());
-						break;
-					case 8:
-						selector12.add(cell.getStringCellValue());
-						break;
-					case 9:
-						selector13.add(cell.getStringCellValue());
-						break;
-					case 10:
-						selector14.add(cell.getStringCellValue());
-						break;
-					case 11:
-						selector15.add(cell.getStringCellValue());
-						break;
-					case 12:
-						brand.add(cell.getStringCellValue());
-						break;
-
-				}
-			}
-
-		}
-
-
-
-
-
-
 	/**
-	 * This method create queries for multiple options selected  and product type
+	 * This method create queries for multiple options selected and product type
+	 * 
 	 * @param searchQueryDTO
 	 * @param orderList
 	 * @return
@@ -581,7 +361,7 @@ public class ProductServiceImpl implements ProductService {
 	private SearchRequestBuilder createQueries(SearchQueryDTO searchQueryDTO, List<Entry<String, Integer>> orderList) {
 		BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
 
-		/*if(null!=searchQueryDTO.getAttributes()) {
+		if (null != searchQueryDTO.getAttributes()) {
 			Set<String> keys = searchQueryDTO.getAttributes().keySet();
 			for (String key : keys) {
 				List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
@@ -594,12 +374,10 @@ public class ProductServiceImpl implements ProductService {
 				}
 
 			}
-		}*/
+		}
 		SearchRequestBuilder plainBuilder = client.prepareSearch("my_index").setTypes("products")
 				.setQuery(QueryBuilders.boolQuery()
-						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())))
-                ;
-			//			.must(queryBuilder));
+						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).must(queryBuilder));
 
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
@@ -608,6 +386,52 @@ public class ProductServiceImpl implements ProductService {
 
 	}
 
+	@Override
+	public void CreateData(String place, String type, String category, String excelFileName) {
+		ExcelUtility excelutil = new ExcelUtility();
+		excelutil.setFileName(excelFileName);
+		List<String> headers;
+		try {
+			headers = excelutil.getHeaders();
 
+			Set<List<String>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
+			Map<String, String> topMap = new HashMap();
+			topMap.put("place", place);
+			topMap.put("type", type);
+			topMap.put("category", category);
+			Gson gson = new Gson();
+			String topJson = gson.toJson(topMap);
+
+			for (List<String> list : combs) {
+				Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
+				Map<String, Map<String, String>> myMap = new HashMap();
+				myMap.put("attributes", excelMap);
+				String json = gson.toJson(myMap);
+				IndexRequestBuilder req = client.prepareIndex("my_kala", "products");
+				req.setSource(topJson, XContentType.JSON); // .setSource(json, XContentType.JSON);
+				IndexResponse response = req.get();
+				req.setId(response.getId());
+				UpdateRequest updateRequest = new UpdateRequest();
+				updateRequest.index("my_kala");
+				updateRequest.type("products");
+				updateRequest.id(response.getId());
+				updateRequest.doc(json, XContentType.JSON);
+				client.update(updateRequest).get();
+				// System.out.println("map is " + response.getId());
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void CreateSameTypeDataWithMultipleExcel(String place, String type, String category,
+			List<String> excelFileNames) {
+		for (int i = 0; i < excelFileNames.size(); i++) {
+			CreateData(place, type, category, excelFileNames.get(i));
+		}
+
+	}
 
 }

@@ -1,7 +1,6 @@
 package com.elastic.service;
 
 
-import java.io.IOException;
 import java.util.List;
 
 import com.elastic.model.ProductDTO;
@@ -12,5 +11,7 @@ public interface ProductService {
 	public List getTypes();
 	public ProductDTO getProductDTOFullText(String fullText);
 	public ProductDTO getProductDTOMatchQuery(SearchQueryDTO searchQueryDTO);
-void readExcel() throws Exception;
-}
+	public void CreateData(String place, String type, String category, String excelFileName);
+	public void CreateSameTypeDataWithMultipleExcel(String place, String type, String category, List<String> excelFileNames);
+
+	}
