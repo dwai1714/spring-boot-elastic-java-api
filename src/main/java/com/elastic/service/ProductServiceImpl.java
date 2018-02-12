@@ -28,6 +28,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.nested.Nested;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import com.elastic.model.ProductDTO;
 import com.elastic.model.SearchQueryDTO;
 import com.elastic.util.ExcelUtility;
 import com.google.gson.Gson;
+import org.springframework.util.StringUtils;
 
 @Service
 
@@ -60,10 +62,9 @@ public class ProductServiceImpl implements ProductService {
 		}
 
 		// getOrder list
-		List<Entry<String, Integer>> orderList = createOrderList(hits[0]);
+		List<Entry<String, Integer>> orderList = createOrderList(hits[0],"order");
 		// actual order of attributes
-		Map<String, Integer> order = getOrder(hits[0]);
-
+		Map<String, Integer> order = getOrder(hits[0], "order");
 		logger.info("Preparing query");
 		SearchRequestBuilder requestBuilder = createProductSearchRequestBuilder(type, orderList);
 
@@ -72,8 +73,7 @@ public class ProductServiceImpl implements ProductService {
 		SearchResponse response = requestBuilder.get();
 
 		//
-		Map<String, Map<String, Long>> facets = getFacets(response, orderList);
-
+		Map<String, List<String>> facets = getFacets(response, orderList,hits[0]);
 		createSearchResult(pDTO, order, response, facets);
 		return pDTO;
 	}
@@ -87,7 +87,7 @@ public class ProductServiceImpl implements ProductService {
 	 * @param facets
 	 */
 	private void createSearchResult(ProductDTO pDTO, Map<String, Integer> order, SearchResponse response,
-			Map<String, Map<String, Long>> facets) {
+			Map<String, List<String>> facets) {
 		SearchHit[] hits;
 		hits = response.getHits().getHits();
 		List<Product> products = new ArrayList<Product>();
@@ -111,30 +111,6 @@ public class ProductServiceImpl implements ProductService {
 		pDTO.setOrder(order);
 	}
 
-	/**
-	 * This method will buiuld factes/aggragations
-	 * 
-	 * @param response
-	 * @param orderList
-	 * @return
-	 */
-	private Map<String, Map<String, Long>> getFacets(SearchResponse response, List<Entry<String, Integer>> orderList) {
-		Map<String, Map<String, Long>> facets = new HashMap<String, Map<String, Long>>();
-		Nested agg = response.getAggregations().get("all_attributes");
-		for (Map.Entry<String, Integer> entry : orderList) {
-			Terms terms = agg.getAggregations().get(entry.getKey());
-			Map<String, Long> buckets = new HashMap();
-			terms.getBuckets().forEach(bucket -> {
-				buckets.put(bucket.getKeyAsString(), bucket.getDocCount());
-
-			});
-			if (buckets.size() != 0)
-				facets.put(entry.getKey(), buckets);
-
-		}
-		return facets;
-
-	}
 
 	/**
 	 * This method will create product search request builder with aggregations for
@@ -327,6 +303,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public ProductDTO getProductDTOMatchQuery(SearchQueryDTO searchQueryDTO) {
 
+
 		ProductDTO pDTO = new ProductDTO();
 
 		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(searchQueryDTO.getProductType());
@@ -337,18 +314,16 @@ public class ProductServiceImpl implements ProductService {
 			return pDTO;
 		}
 		// getOrder list
-		List<Entry<String, Integer>> orderList = createOrderList(hits[0]);
+		List<Entry<String, Integer>> orderList = createOrderList(hits[0],"order");
 		// actual order of attributes
-		Map<String, Integer> order = getOrder(hits[0]);
+		Map<String, Integer> order = getOrder(hits[0], "order");
 		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO, orderList);
 		logger.info("Preparing query");
 
 		SearchResponse response = plainQBuilder.get();
-		Map<String, Map<String, Long>> facets = getFacets(response, orderList);
-
+		Map<String, List<String>> facets = getFacets(response, orderList,hits[0]);
 		createSearchResult(pDTO, order, response, facets);
 		return pDTO;
-
 	}
 
 	/**
@@ -432,6 +407,139 @@ public class ProductServiceImpl implements ProductService {
 			CreateData(place, category, type, excelFileNames.get(i));
 		}
 
+	}
+
+	/**
+	 * This method will buiuld factes/aggragations
+	 *
+	 * @param response
+	 * @param orderList
+	 * @return
+	 */
+	private Map<String, List<String>> getFacets(SearchResponse response, List<Entry<String, Integer>> orderList,SearchHit searchHit) {
+		Map<String, Integer> order = getOrder(searchHit, "range");
+		Map<String, Integer> min = getOrder(searchHit, "min");
+		Map<String, Integer> max = getOrder(searchHit, "max");
+
+		Map<String, List<String>> facets = new HashMap<String, List<String>>();
+		Nested agg = response.getAggregations().get("all_attributes");
+		for (Map.Entry<String, Integer> entry : orderList) {
+			MultiBucketsAggregation terms;
+			terms = agg.getAggregations().get(entry.getKey());
+
+			List<String> buckets = new ArrayList<String>();
+			terms.getBuckets().forEach(bucket -> {
+				buckets.add(bucket.getKeyAsString());
+
+			});
+			if (buckets.size() != 0)
+				facets.put(entry.getKey(), buckets);
+
+		}
+		reOrderFacets(facets,order,min,max);
+		return facets;
+
+	}
+
+	private void reOrderFacets(Map<String, List<String>> facets, Map<String, Integer> order, Map<String, Integer> min, Map<String, Integer> max) {
+		Set<String> attributes = order.keySet();
+		for(String attribute:attributes){
+			if(order.get(attribute)>0){
+				int value = order.get(attribute);
+				List<String> reOrderList = facets.get(attribute);
+				List<String> resultList = new ArrayList<String>();
+				String current="";
+				String prev = "";
+				int count =1;
+				boolean flag = false;
+				for(String key:reOrderList){
+					current = key;
+					if(count==1){
+						prev = key;
+					}
+					if(count!=1 && (value%count==0)){
+						resultList.add(prev+"-"+current);
+						prev=current;
+						count=1;
+						flag = true;
+					}else {
+						count++;
+						flag = false;
+					}
+				}
+				if(!flag){
+					resultList.add(current+"-"+"above");
+
+				}
+				facets.put(attribute,resultList);
+			}
+		}
+		Set<String> facetKeys = facets.keySet();
+		for(String facetKey:facetKeys){
+			Integer minValue =min.get(facetKey);
+			Integer maxValue = max.get(facetKey);
+			if(minValue>0 && maxValue>0) {
+				List<String> minMax = new ArrayList<String>();
+
+				minMax.add(minValue + "-" + maxValue);
+				facets.put(facetKey, minMax);
+			}
+		}
+
+
+
+	}
+	/**
+	 * This method will create the order list
+	 *
+	 * @param hit
+	 * @return
+	 */
+	private List<Entry<String, Integer>> createOrderList(SearchHit hit,String metaData) {
+		Map<String, Integer> order = getOrder(hit,metaData);
+
+		Set<Entry<String, Integer>> set = order.entrySet();
+		List<Entry<String, Integer>> list = new ArrayList<Entry<String, Integer>>(set);
+		Collections.sort(list, new Comparator<Map.Entry<String, Integer>>() {
+			public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+				return (o1.getValue()).compareTo(o2.getValue());// Ascending order
+			}
+		});
+		return list;
+	}
+
+	/**
+	 * This method will get the raw order which needs to be processed further
+	 *
+	 * @param hit
+	 * @param metaData
+	 * @return
+	 */
+	private Map<String, Integer> getOrder(SearchHit hit, String metaData) {
+		Map<String, Object> attSource = hit.getSourceAsMap();
+		Map<String,Map<String,Object>> metaDataMap = (Map<String,Map<String,Object>>)attSource.get("attributes_metadata");
+		Set<String> attributes = metaDataMap.keySet();
+		return createOrderingList(attributes,metaDataMap,metaData);
+
+		/*HashMap<String,Object> metaValues = (List<Map<String,Object>>) metadata.values();
+		Set<String> attributes = metaValues.keySet();
+		return createOrderList(attributes,metaValues);
+		*///return (Map<String, Integer>) attSource.get("order");
+		//return null;
+	}
+
+	private Map<String, Integer> createOrderingList(Set<String> attributes, Map<String, Map<String, Object>> mappedValues, String metaData) {
+		Map<String,Integer> orderList = new HashMap<String,Integer>();
+		for(String name:attributes){
+			Map<String,Object> indMap = (Map<String,Object>)mappedValues.get(name);
+			int order =0;
+			if(!StringUtils.isEmpty(indMap.get(metaData))){
+				order  = Integer.parseInt((String)indMap.get(metaData));
+			}
+			orderList.put(name,order);
+
+		}
+		return orderList;
 	}
 
 }

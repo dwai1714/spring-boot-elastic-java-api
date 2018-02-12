@@ -22,7 +22,7 @@ public class EsConfig {
 	@Bean
 	public TransportClient client() throws UnknownHostException {
 
-		Settings settings = Settings.builder().put("cluster.name", "elasticsearch_dwai1714").build();
+		Settings settings = Settings.builder().put("cluster.name", "elasticsearch").build();
 		TransportClient client = new PreBuiltTransportClient(settings).addTransportAddress
 				(new TransportAddress(InetAddress.getByName("127.0.0.1"), 9300));
 //		TransportClient client = new PreBuiltTransportClient(Settings.EMPTY)

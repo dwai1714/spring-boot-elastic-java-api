@@ -5,11 +5,19 @@ import java.util.Map;
 
 public class ProductDTO {
 	List<Product> products;
-	Map<String, Map<String, Long>> attributes;
+	Map<String, List<String>> attributes;
 	Map<String, Integer> order;
 
 
 	public ProductDTO() {
+	}
+
+	public Map<String, List<String>> getAttributes() {
+		return attributes;
+	}
+
+	public void setAttributes(Map<String, List<String>> attributes) {
+		this.attributes = attributes;
 	}
 
 	public List<Product> getProducts() {
@@ -20,14 +28,7 @@ public class ProductDTO {
 		this.products = products;
 	}
 
-	public Map<String, Map<String, Long>> getAttributes() {
-		return attributes;
-	}
 
-	public void setAttributes(Map<String, Map<String, Long>> attributes) {
-		this.attributes = attributes;
-	}
-	
 	public Map<String, Integer> getOrder() {
 		return order;
 	}
