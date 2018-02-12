@@ -447,12 +447,13 @@ public class ProductServiceImpl implements ProductService {
 			if(order.get(attribute)>0){
 				int value = order.get(attribute);
 				List<String> reOrderList = facets.get(attribute);
-				List<String> resultList = new ArrayList<String>();
+				List<String> sortedList = getSortedList(reOrderList);
+					List<String> resultList = new ArrayList<String>();
 				String current="";
 				String prev = "";
 				int count =1;
 				boolean flag = false;
-				for(String key:reOrderList){
+				for(String key:sortedList){
 					current = key;
 					if(count==1){
 						prev = key;
@@ -489,6 +490,28 @@ public class ProductServiceImpl implements ProductService {
 
 
 	}
+
+	private List<String> getSortedList(List<String> reOrderList) {
+		 Collections.sort(reOrderList, new Comparator<String>() {
+			@Override
+			public int compare(String first, String second) {
+				int firstValue = Integer.parseInt(first);
+				int secondValue = Integer.parseInt(second);
+				if (firstValue > secondValue) {
+					return 1;
+				} else if (firstValue > secondValue) {
+					return -1;
+				} else {
+					return 0;
+				}
+
+			}
+		});
+		 return reOrderList;
+	}
+
+
+
 	/**
 	 * This method will create the order list
 	 *
@@ -520,6 +543,7 @@ public class ProductServiceImpl implements ProductService {
 		Map<String,Map<String,Object>> metaDataMap = (Map<String,Map<String,Object>>)attSource.get("attributes_metadata");
 		Set<String> attributes = metaDataMap.keySet();
 		return createOrderingList(attributes,metaDataMap,metaData);
+
 
 		/*HashMap<String,Object> metaValues = (List<Map<String,Object>>) metadata.values();
 		Set<String> attributes = metaValues.keySet();
