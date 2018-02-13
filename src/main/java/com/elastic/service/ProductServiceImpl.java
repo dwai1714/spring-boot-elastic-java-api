@@ -1,16 +1,10 @@
 package com.elastic.service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
+import com.elastic.model.Attributes_Order;
+import com.google.gson.GsonBuilder;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
@@ -108,7 +102,7 @@ public class ProductServiceImpl implements ProductService {
 		logger.info("Query Done");
 		pDTO.setProducts(products);
 		pDTO.setAttributes(facets);
-		pDTO.setOrder(order);
+		//pDTO.setOrder(order);
 	}
 
 
@@ -309,6 +303,17 @@ public class ProductServiceImpl implements ProductService {
 		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(searchQueryDTO.getProductType());
 		SearchResponse attResponse = requestAttOrderBuilder.get();
 		SearchHit[] hits = attResponse.getHits().getHits();
+		Attributes_Order attributes_order = new Attributes_Order();
+		for(SearchHit hit : hits){
+			String source =hit.getSourceAsString();
+			if (source != null) {
+				Gson gson = new GsonBuilder().setDateFormat("yyyMMdd")
+						.create();
+				 attributes_order = gson.fromJson(source, Attributes_Order.class);
+				}
+			String sourceAsString = hit.getSourceAsString();
+
+		}
 		if (hits.length == 0) {
 			logger.info("hits is zero");
 			return pDTO;
@@ -322,6 +327,7 @@ public class ProductServiceImpl implements ProductService {
 
 		SearchResponse response = plainQBuilder.get();
 		Map<String, List<String>> facets = getFacets(response, orderList,hits[0]);
+		pDTO.setAttributes_orders(attributes_order);
 		createSearchResult(pDTO, order, response, facets);
 		return pDTO;
 	}
@@ -352,7 +358,8 @@ public class ProductServiceImpl implements ProductService {
 		}
 		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
 				.setQuery(QueryBuilders.boolQuery()
-						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).must(queryBuilder));
+						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())));
+						//.must(queryBuilder));
 
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
@@ -442,74 +449,102 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	private void reOrderFacets(Map<String, List<String>> facets, Map<String, Integer> order, Map<String, Integer> min, Map<String, Integer> max) {
-		Set<String> attributes = order.keySet();
-		for(String attribute:attributes){
-			if(order.get(attribute)>0){
-				int value = order.get(attribute);
-				List<String> reOrderList = facets.get(attribute);
-				List<String> sortedList = getSortedList(reOrderList);
-					List<String> resultList = new ArrayList<String>();
-				String current="";
-				String prev = "";
-				int count =1;
-				boolean flag = false;
-				for(String key:sortedList){
-					current = key;
-					if(count==1){
-						prev = key;
-					}
-					if(count!=1 && (value%count==0)){
-						resultList.add(prev+"-"+current);
-						prev=current;
-						count=1;
-						flag = true;
-					}else {
-						count++;
-						flag = false;
-					}
-				}
-				if(!flag){
-					resultList.add(current+"-"+"above");
+		reOrderWithRange(facets, order);
+		reOrderPrice(facets, min, max);
+	}
 
-				}
-				facets.put(attribute,resultList);
-			}
-		}
-		Set<String> facetKeys = facets.keySet();
-		for(String facetKey:facetKeys){
+	private void reOrderPrice(Map<String, List<String>> facets, Map<String, Integer> min, Map<String, Integer> max) {
+		Set<String> minKeys = min.keySet();
+		for(String facetKey:minKeys){
 			Integer minValue =min.get(facetKey);
 			Integer maxValue = max.get(facetKey);
 			if(minValue>0 && maxValue>0) {
 				List<String> minMax = new ArrayList<String>();
-
 				minMax.add(minValue + "-" + maxValue);
 				facets.put(facetKey, minMax);
 			}
 		}
+	}
 
+	private void reOrderWithRange(Map<String, List<String>> facets, Map<String, Integer> order) {
+		Set<String> attributes = order.keySet();
+		for(String attribute:attributes){
+			List<String> reOrderList = facets.get(attribute);
+			if(null!=reOrderList && reOrderList.size()>0) {
+				List<String> resultList = createRangeFacet(reOrderList, order, attribute);
+				facets.put(attribute, resultList);
+			}
+		}
+	}
 
+	private List<String> createRangeFacet(List<String> reOrderList, Map<String, Integer> order, String attribute) {
+		List<String> resultList = new ArrayList<String>();
+		if(order.get(attribute)>0){
+			List<String> text = removeTextValues(reOrderList);
+			int value = order.get(attribute);
+             getSortedList(reOrderList);
+            String current="";
+            String prev = "";
+            int count =1;
+            boolean flag = false;
+            for(String key:reOrderList){
+                current = key;
+                if(count==1){
+                    prev = key;
+                }
+                if(count!=1 && (value%count==0)){
+                    resultList.add(prev+"-"+current);
+                    prev=current;
+                    count=1;
+                    flag = true;
+                }else {
+                    count++;
+                    flag = false;
+                }
+            }
+            if(!flag){
+                resultList.add(current+"-"+"above");
+
+            }
+			resultList.addAll(text);
+			return resultList;
+		}else{
+			return reOrderList;
+		}
 
 	}
 
-	private List<String> getSortedList(List<String> reOrderList) {
+	private void getSortedList(List<String> reOrderList) {
+		//for()
 		 Collections.sort(reOrderList, new Comparator<String>() {
 			@Override
 			public int compare(String first, String second) {
-				int firstValue = Integer.parseInt(first);
-				int secondValue = Integer.parseInt(second);
-				if (firstValue > secondValue) {
-					return 1;
-				} else if (firstValue > secondValue) {
-					return -1;
-				} else {
-					return 0;
-				}
+				int firstValue = Math.round(Float.parseFloat(first));
+				int secondValue = Math.round(Float.parseFloat(second));
+				return Integer.compare(firstValue,secondValue);
 
 			}
 		});
-		 return reOrderList;
+		// return reOrderList;
 	}
 
+	private List<String> removeTextValues(List<String> reOrderList) {
+		List<String> text = new ArrayList<String>();
+		if(null!=reOrderList && reOrderList.size()>0) {
+			Iterator<String> itr = reOrderList.iterator();
+			while (itr.hasNext()) {
+				String current = "";
+				try {
+					current = itr.next();
+					Float.parseFloat(current);
+				} catch (NumberFormatException ne) {
+					text.add(current);
+					itr.remove();
+				}
+			}
+		}
+		return text;
+	}
 
 
 	/**

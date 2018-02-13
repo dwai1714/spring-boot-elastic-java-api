@@ -6,7 +6,18 @@ import java.util.Map;
 public class ProductDTO {
 	List<Product> products;
 	Map<String, List<String>> attributes;
-	Map<String, Integer> order;
+	//Map<String, Integer> order;
+
+
+	public Attributes_Order getAttributes_orders() {
+		return attributes_orders;
+	}
+
+	public void setAttributes_orders(Attributes_Order attributes_orders) {
+		this.attributes_orders = attributes_orders;
+	}
+
+	Attributes_Order attributes_orders;
 
 
 	public ProductDTO() {
@@ -29,13 +40,13 @@ public class ProductDTO {
 	}
 
 
-	public Map<String, Integer> getOrder() {
+	/*public Map<String, Integer> getOrder() {
 		return order;
 	}
 
 	public void setOrder(Map<String, Integer> order) {
 		this.order = order;
 	}
-
+*/
 
 }
