@@ -190,7 +190,7 @@ public class ProductServiceImpl implements ProductService {
 	 */
 	private SearchRequestBuilder getAttributeSearchRequestBuilder(String type) {
 		SearchRequestBuilder requestAttOrderBuilder = client.prepareSearch(ATT_ORDER_INDEX_NAME).setTypes(ORDER_TYPE_NAME);
-		QueryBuilder attQB = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("Type", type));
+		QueryBuilder attQB = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("type", type));
 		requestAttOrderBuilder.setQuery(attQB);
 		return requestAttOrderBuilder;
 	}
