@@ -39,7 +39,7 @@ public class CorsConfig implements Filter {
 		  currentResponse.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT");
 		  currentResponse.setHeader("Access-Control-Max-Age", "3600");
 		  currentResponse.setHeader("Access-Control-Allow-Headers",
-		      "Content-Type, Accept, X-Requested-With, X-AUTH-TOKEN");
+		      "Content-type, Accept, X-Requested-With, X-AUTH-TOKEN");
 
 		  filterChain.doFilter(servletRequest, servletResponse);
 
