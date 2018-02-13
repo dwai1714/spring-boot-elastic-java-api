@@ -2,6 +2,7 @@ package com.elastic.service;
 
 
 import java.util.List;
+import java.util.Map;
 
 import com.elastic.model.ProductDTO;
 import com.elastic.model.SearchQueryDTO;
@@ -20,4 +21,5 @@ public interface ProductService {
 	public void CreateData(String place, String category, String type, String excelFileName);
 	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type, List<String> excelFileNames);
 
-	}
+	List<String> getAllProductTypes(Map queryMap);
+}

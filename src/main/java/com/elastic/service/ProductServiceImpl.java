@@ -7,6 +7,8 @@ import com.elastic.model.Attributes_Order;
 import com.google.gson.GsonBuilder;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
@@ -20,8 +22,10 @@ import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.nested.Nested;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -43,6 +47,7 @@ public class ProductServiceImpl implements ProductService {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Autowired
 	private TransportClient client;
+	List<HashMap<String,Object>> listOfProducts = new ArrayList<HashMap<String, Object>>();
 
 	@Override
 	public ProductDTO getProductDTO(String type) {
@@ -126,11 +131,13 @@ public class ProductServiceImpl implements ProductService {
 		requestBuilder.setQuery(qb);
 		// requestBuilder.setQuery(nqb);
 		requestBuilder.addAggregation(aggregation);
-		return requestBuilder;
+        AggregationBuilder aggregationType =  AggregationBuilders.terms("type").field("type"+ ".keyword");
+        requestBuilder.addAggregation(aggregationType);
+        return requestBuilder;
 	}
 
 	/**
-	 * This method will build the aggregation builder with all the attributes
+	 * This method will build the aggreEgation builder with all the attributes
 	 * 
 	 * @param orderList
 	 * @return
@@ -364,6 +371,7 @@ public class ProductServiceImpl implements ProductService {
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
 
+
 		return plainBuilder;
 
 	}
@@ -377,18 +385,31 @@ public class ProductServiceImpl implements ProductService {
 			headers = excelutil.getHeaders();
 
 			Set<List<String>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
-			Map<String, String> topMap = new HashMap();
+
+			/*Map<String, String> topMap = new HashMap();
 			topMap.put("place", place);
 			topMap.put("type", type);
 			topMap.put("category", category);
 			Gson gson = new Gson();
 			String topJson = gson.toJson(topMap);
-
+*/
 			for (List<String> list : combs) {
+				HashMap<String,Object> topMap = new HashMap<String,Object>();
+				topMap.put("place", place);
+				topMap.put("type", type);
+				topMap.put("category", category);
+
 				Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
+
+				topMap.put("attributes",excelMap);
+				/*Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
 				Map<String, Map<String, String>> myMap = new HashMap();
 				myMap.put("attributes", excelMap);
-				String json = gson.toJson(myMap);
+				topMap.put("place", place);
+				topMap.put("type", type);
+				topMap.put("category", category);
+			*/
+				/*String json = gson.toJson(myMap);
 				IndexRequestBuilder req = client.prepareIndex(INDEX_NAME, TYPE_NAME);
 				req.setSource(topJson, XContentType.JSON); // .setSource(json, XContentType.JSON);
 				IndexResponse response = req.get();
@@ -399,12 +420,14 @@ public class ProductServiceImpl implements ProductService {
 				updateRequest.id(response.getId());
 				updateRequest.doc(json, XContentType.JSON);
 				client.update(updateRequest).get();
-				// System.out.println("map is " + response.getId());
+				*/// System.out.println("map is " + response.getId());
+				listOfProducts.add(topMap);
 			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		//doCommit();
 	}
 
 	@Override
@@ -413,7 +436,47 @@ public class ProductServiceImpl implements ProductService {
 		for (int i = 0; i < excelFileNames.size(); i++) {
 			CreateData(place, category, type, excelFileNames.get(i));
 		}
+		doCommit();
 
+
+	}
+
+	private void doCommit() {
+		BulkRequestBuilder brb = client.prepareBulk();
+		int productCount = 1;
+		for (HashMap<String, Object> product : listOfProducts) {
+			if (productCount < 5000) {
+				brb.add(client.prepareIndex(INDEX_NAME, TYPE_NAME).setSource(product));
+				productCount++;
+			} else {
+				BulkResponse bulkResponse = brb.execute().actionGet();
+				brb = null;
+				brb = client.prepareBulk();
+				productCount = 1;
+			}
+		}
+			BulkResponse bulkResponse = brb.execute().actionGet();
+	}
+
+	@Override
+	public List<String> getAllProductTypes(Map queryMap) {
+		BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
+		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
+				.setQuery(QueryBuilders.boolQuery()
+						.must(QueryBuilders.matchQuery("place", queryMap.get("place")))
+						.must(QueryBuilders.matchQuery("category", queryMap.get("category")))
+		.must(QueryBuilders.matchQuery("productType", queryMap.get("productType"))));
+		AggregationBuilder aggregationType =  AggregationBuilders.terms("type").field("type"+ ".keyword");
+		plainBuilder.addAggregation(aggregationType);
+		SearchResponse attResponse = plainBuilder.get();
+		SearchHit[] hits = attResponse.getHits().getHits();
+		Terms terms = attResponse.getAggregations().get("type");
+		List<String> buckets = new ArrayList<String>();
+		terms.getBuckets().forEach(bucket -> {
+			buckets.add(bucket.getKeyAsString());
+
+		});
+		return buckets;
 	}
 
 	/**

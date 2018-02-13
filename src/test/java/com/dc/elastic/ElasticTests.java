@@ -38,15 +38,17 @@ public class ElasticTests {
 	public void getDataTest() throws Exception {
 		System.out.println("Time Start is " + new Date());
 		List<String> myList = new ArrayList<String>();
-		myList.add("C:/Users/dwai1714/elastic/Bidet.xlsx");
-		myList.add("C:/Users/dwai1714/elastic/Parts-urinal.xlsx");
-		myList.add("C:/Users/dwai1714/elastic/Toilet.xlsx");
-		myList.add("C/Users/dwai1714/elastic/Urinals.xlsx");
-		myList.add("C/Users/dwai1714/elastic/parts-bidet.xlsx");
-		myList.add("C/Users/dwai1714/elastic/parts-toilet.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\Bidet.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\Parts-urinal.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\Toilet.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\Urinals.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\parts-bidet.xlsx");
+		myList.add("C:\\Users\\dwai1714\\elastic\\parts-toilet.xlsx");
 		service.CreateSameTypeDataWithMultipleExcel("Home & Garden","Bathroom", "Toilets", myList);
 		System.out.println("Time End with Toilets is " + new Date());
-		service.CreateData("Electronics","TV and Home Theater", "TV", "/Users/dwai1714/elastic/TV_Edited.xlsx");
+		List<String> tvFile = new ArrayList<String>();
+		tvFile.add("C:\\Users\\dwai1714\\elastic\\TV_Edited.xlsx");
+		service.CreateSameTypeDataWithMultipleExcel("Electronics","TV and Home Theater", "TV",tvFile );
 		System.out.println("Time End with TV is " + new Date());
 
 	}

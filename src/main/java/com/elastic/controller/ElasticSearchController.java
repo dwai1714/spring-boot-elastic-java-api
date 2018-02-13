@@ -1,14 +1,11 @@
 package com.elastic.controller;
 
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.elastic.model.ProductDTO;
 import com.elastic.model.SearchQueryDTO;
@@ -41,5 +38,12 @@ public class ElasticSearchController {
 		ProductDTO productDTO = productService.getProductDTOMatchQuery(searchQueryDTO);
 		return productDTO;
 	}
+	@RequestMapping(method = RequestMethod.GET, value = "/types",produces = MediaType.APPLICATION_JSON_VALUE)
+	public List<String> getProductTypes(@RequestParam Map queryMap)  throws Exception {
+
+		return  productService.getAllProductTypes(queryMap);
+
+	}
+
 
 }
