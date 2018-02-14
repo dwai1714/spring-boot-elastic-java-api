@@ -96,10 +96,10 @@ public class ExcelUtility {
 		return headers;
 	}
 
-	public <T> List<List<String>> getColumnAsArray() throws Exception {
+	public <T> List<List<Object>> getColumnAsArray() throws Exception {
 		{
 
-			List<List<String>> lists = new ArrayList();
+			List<List<Object>> lists = new ArrayList();
 			try {
 
 				FileInputStream file = new FileInputStream(new File(fileName));
@@ -115,7 +115,7 @@ public class ExcelUtility {
 
 				// Iterate through each rows from first sheet
 				for (int i = 0; i < noOfColumns; i++) {
-					List<String> col = new ArrayList<String>();
+					List<Object> col = new ArrayList<Object>();
 
 					Iterator<Row> rowIterator = sheet.iterator();
 
@@ -131,7 +131,7 @@ public class ExcelUtility {
 								if (cell.getCellTypeEnum() == CellType.NUMERIC) {
 									// System.out.print(cell.getNumericCellValue());
 									String val = String.valueOf(cell.getNumericCellValue());
-									col.add(val);
+									col.add(new Double(cell.getNumericCellValue()));
 								} else if (cell.getCellTypeEnum() == CellType.STRING) {
 									// System.out.print(cell.getRichStringCellValue());
 									col.add(cell.getStringCellValue());
@@ -165,9 +165,9 @@ public class ExcelUtility {
 
 	public void createJson() throws Exception {
 		List<String> headers = getHeaders();
-		Set<List<String>> combs = getCombinations(getColumnAsArray());
-		for (List<String> list : combs) {
-			Map<String, String> excelMap = combineListsIntoOrderedMap(headers, list);
+		Set<List<Object>> combs = getCombinations(getColumnAsArray());
+		for (List<Object> list : combs) {
+			Map<String, Object> excelMap = combineListsIntoOrderedMap(headers, list);
 			Gson gson = new Gson();
 			String json = gson.toJson(excelMap);
 			System.out.println("map is  " + json.toString());
@@ -175,10 +175,10 @@ public class ExcelUtility {
 
 	}
 
-	public Map<String, String> combineListsIntoOrderedMap(List<String> keys, List<String> values) {
+	public Map<String, Object> combineListsIntoOrderedMap(List<String> keys, List<Object> values) {
 		if (keys.size() != values.size())
 			throw new IllegalArgumentException("Cannot combine lists with dissimilar sizes");
-		Map<String, String> map = new LinkedHashMap<String, String>();
+		Map<String, Object> map = new LinkedHashMap<String, Object>();
 		for (int i = 0; i < keys.size(); i++) {
 			map.put(keys.get(i), values.get(i));
 		}

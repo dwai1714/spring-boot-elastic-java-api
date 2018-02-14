@@ -6,8 +6,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-public class Attributes_Order implements Serializable {
-    String type;
+public class Attributes_Order implements Serializable { String type;
 
 
     public Map<String, LinkedTreeMap<String, String>> getAttributes_metadata() {
@@ -32,5 +31,4 @@ public class Attributes_Order implements Serializable {
     public void setType(String type) {
         this.type = type;
     }
-
    }

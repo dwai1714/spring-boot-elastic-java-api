@@ -48,9 +48,9 @@ public class CreateDataFromExcel {
 	public void createJson() throws Exception {
 		excelutil.setFileName(this.fileName);
 		List<String> headers = excelutil.getHeaders();
-		Set<List<String>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
-		for (List<String> list : combs) {
-			Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
+		Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
+		for (List<Object> list : combs) {
+			Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
 			Gson gson = new Gson();
 			String json = gson.toJson(excelMap);
 			client.prepareIndex();

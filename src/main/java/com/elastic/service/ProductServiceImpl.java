@@ -9,23 +9,14 @@ import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequestBuilder;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.NestedQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.nested.Nested;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -73,20 +64,20 @@ public class ProductServiceImpl implements ProductService {
 
 		//
 		Map<String, List<String>> facets = getFacets(response, orderList,hits[0]);
-		createSearchResult(pDTO, order, response, facets);
+		createSearchResult(pDTO, order, response, facets, null);
 		return pDTO;
 	}
 
 	/**
 	 * This method will create the search result from the search response
-	 * 
-	 * @param pDTO
+	 *  @param pDTO
 	 * @param order
 	 * @param response
 	 * @param facets
+	 * @param otherValueList
 	 */
 	private void createSearchResult(ProductDTO pDTO, Map<String, Integer> order, SearchResponse response,
-			Map<String, List<String>> facets) {
+									Map<String, List<String>> facets, Map<String, String> otherValueList) {
 		SearchHit[] hits;
 		hits = response.getHits().getHits();
 		List<Product> products = new ArrayList<Product>();
@@ -106,8 +97,28 @@ public class ProductServiceImpl implements ProductService {
 		});
 		logger.info("Query Done");
 		pDTO.setProducts(products);
-		pDTO.setAttributes(facets);
+		addAdditionalValues(pDTO, facets, otherValueList);
 		//pDTO.setOrder(order);
+	}
+
+	private void addAdditionalValues(ProductDTO pDTO, Map<String, List<String>> facets, Map<String, String> otherValueList) {
+		Set<String> otherValueKeys = otherValueList.keySet();
+		for(String otherValueKey:otherValueKeys){
+			String[] temp = null;
+			String otherValue = otherValueList.get(otherValueKey);
+			if(otherValue.contains(",")){
+				temp = otherValue.split(",");
+			}else{
+				temp = new String[]{ otherValue};
+			}
+			List<String> facetValues = facets.get(otherValueKey);
+			for(String tempVal:temp){
+				facetValues.add(tempVal);
+			}
+			facets.put(otherValueKey,facetValues);
+		}
+
+		pDTO.setAttributes(facets);
 	}
 
 
@@ -188,6 +199,7 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, Object> attSource = hit.getSourceAsMap();
 		return (Map<String, Integer>) attSource.get("order");
 	}
+
 
 	/**
 	 * Attributes search query builder
@@ -327,6 +339,7 @@ public class ProductServiceImpl implements ProductService {
 		}
 		// getOrder list
 		List<Entry<String, Integer>> orderList = createOrderList(hits[0],"order");
+		Map<String,String> otherValueList = getAttributeValues(hits[0],"additionalValues");
 		// actual order of attributes
 		Map<String, Integer> order = getOrder(hits[0], "order");
 		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO, orderList);
@@ -335,7 +348,7 @@ public class ProductServiceImpl implements ProductService {
 		SearchResponse response = plainQBuilder.get();
 		Map<String, List<String>> facets = getFacets(response, orderList,hits[0]);
 		pDTO.setAttributes_orders(attributes_order);
-		createSearchResult(pDTO, order, response, facets);
+		createSearchResult(pDTO, order, response, facets,otherValueList);
 		return pDTO;
 	}
 
@@ -353,20 +366,37 @@ public class ProductServiceImpl implements ProductService {
 			Set<String> keys = searchQueryDTO.getAttributes().keySet();
 			for (String key : keys) {
 				List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
-				if (null != attributeValuesList && searchQueryDTO.getAttributes().size() > 0) {
-					for (String value : attributeValuesList) {
-						queryBuilder.must(QueryBuilders.nestedQuery("attributes",
-								QueryBuilders.matchQuery("attributes." + key, value), ScoreMode.Avg));
 
+				if("Size".equalsIgnoreCase(key)){
+					for (String value : attributeValuesList) {
+						String[] values = splitValue(value);
+						RangeQueryBuilder rq = QueryBuilders.rangeQuery("attributes.Size");
+						if(checkNumeric(values[0])){
+							rq.from(values[0]);
+						}
+						if(checkNumeric((values[1]))){
+							rq.to(values[1]);
+						}
+						BoolQueryBuilder query = QueryBuilders.boolQuery();
+						queryBuilder.should(QueryBuilders.nestedQuery("attributes",query.must(rq),ScoreMode.Avg));
+					}
+				}else{
+					if (null != attributeValuesList && searchQueryDTO.getAttributes().size() > 0) {
+						for (String value : attributeValuesList) {
+							queryBuilder.must(QueryBuilders.nestedQuery("attributes",
+									QueryBuilders.matchQuery("attributes." + key, value), ScoreMode.Avg));
+
+						}
 					}
 				}
-
+				/*
+*/
 			}
 		}
 		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
 				.setQuery(QueryBuilders.boolQuery()
-						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())));
-						//.must(queryBuilder));
+						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType()))
+						.must(queryBuilder));
 
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
@@ -374,6 +404,14 @@ public class ProductServiceImpl implements ProductService {
 
 		return plainBuilder;
 
+	}
+
+	private boolean checkNumeric(String val) {
+		return val != null && val.matches("[-+]?\\d*\\.?\\d+");
+	}
+
+	private String[] splitValue(String value) {
+		return value.split("-");
 	}
 
 	@Override
@@ -384,7 +422,7 @@ public class ProductServiceImpl implements ProductService {
 		try {
 			headers = excelutil.getHeaders();
 
-			Set<List<String>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
+			Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
 
 			/*Map<String, String> topMap = new HashMap();
 			topMap.put("place", place);
@@ -393,13 +431,13 @@ public class ProductServiceImpl implements ProductService {
 			Gson gson = new Gson();
 			String topJson = gson.toJson(topMap);
 */
-			for (List<String> list : combs) {
+			for (List<Object> list : combs) {
 				HashMap<String,Object> topMap = new HashMap<String,Object>();
 				topMap.put("place", place);
 				topMap.put("type", type);
 				topMap.put("category", category);
 
-				Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
+				Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
 
 				topMap.put("attributes",excelMap);
 				/*Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
@@ -641,14 +679,15 @@ public class ProductServiceImpl implements ProductService {
 		Map<String,Map<String,Object>> metaDataMap = (Map<String,Map<String,Object>>)attSource.get("attributes_metadata");
 		Set<String> attributes = metaDataMap.keySet();
 		return createOrderingList(attributes,metaDataMap,metaData);
-
-
-		/*HashMap<String,Object> metaValues = (List<Map<String,Object>>) metadata.values();
-		Set<String> attributes = metaValues.keySet();
-		return createOrderList(attributes,metaValues);
-		*///return (Map<String, Integer>) attSource.get("order");
+		}
+	private Map<String, String> getAttributeValues(SearchHit hit, String metaData) {
+		Map<String, Object> attSource = hit.getSourceAsMap();
+		Map<String,Map<String,Object>> metaDataMap = (Map<String,Map<String,Object>>)attSource.get("attributes_metadata");
+		Set<String> attributes = metaDataMap.keySet();
+		return createOtherValuesList(attributes,metaDataMap,metaData);
 		//return null;
 	}
+
 
 	private Map<String, Integer> createOrderingList(Set<String> attributes, Map<String, Map<String, Object>> mappedValues, String metaData) {
 		Map<String,Integer> orderList = new HashMap<String,Integer>();
@@ -659,6 +698,19 @@ public class ProductServiceImpl implements ProductService {
 				order  = Integer.parseInt((String)indMap.get(metaData));
 			}
 			orderList.put(name,order);
+
+		}
+		return orderList;
+	}
+	private Map<String, String> createOtherValuesList(Set<String> attributes, Map<String, Map<String, Object>> mappedValues, String metaData) {
+		Map<String,String> orderList = new HashMap<String,String>();
+		for(String name:attributes){
+			Map<String,Object> indMap = (Map<String,Object>)mappedValues.get(name);
+			int order =0;
+			if(!StringUtils.isEmpty(indMap.get(metaData))){
+				orderList.put(name,(String)indMap.get(metaData));
+
+			}
 
 		}
 		return orderList;
