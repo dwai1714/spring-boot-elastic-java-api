@@ -5,7 +5,18 @@ import java.util.List;
 import java.util.Map;
 
 public class SearchQueryDTO {
-public String getProductType() {
+
+    private String dummy;
+
+    public String getDummy() {
+        return dummy;
+    }
+
+    public void setDummy(String dummy) {
+        this.dummy = dummy;
+    }
+
+    public String getProductType() {
         return productType;
     }
 

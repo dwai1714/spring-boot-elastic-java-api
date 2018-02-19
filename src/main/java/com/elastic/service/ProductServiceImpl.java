@@ -97,6 +97,8 @@ public class ProductServiceImpl implements ProductService {
 		});
 		logger.info("Query Done");
 		pDTO.setProducts(products);
+		pDTO.setAttributes(facets);
+
 		addAdditionalValues(pDTO, facets, otherValueList);
 		//pDTO.setOrder(order);
 	}
@@ -112,11 +114,14 @@ public class ProductServiceImpl implements ProductService {
 				temp = new String[]{ otherValue};
 			}
 			List<String> facetValues = facets.get(otherValueKey);
-			for(String tempVal:temp){
-				facetValues.add(tempVal);
+			if(null!=facetValues) {
+				for (String tempVal : temp) {
+					facetValues.add(tempVal);
+				}
+				facets.put(otherValueKey,facetValues);
+
 			}
-			facets.put(otherValueKey,facetValues);
-		}
+			}
 
 		pDTO.setAttributes(facets);
 	}
@@ -342,7 +347,9 @@ public class ProductServiceImpl implements ProductService {
 		Map<String,String> otherValueList = getAttributeValues(hits[0],"additionalValues");
 		// actual order of attributes
 		Map<String, Integer> order = getOrder(hits[0], "order");
-		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO, orderList);
+		Map<String, Integer> range = getOrder(hits[0], "range");
+
+		SearchRequestBuilder plainQBuilder = createQueries(searchQueryDTO, orderList,range);
 		logger.info("Preparing query");
 
 		SearchResponse response = plainQBuilder.get();
@@ -357,20 +364,20 @@ public class ProductServiceImpl implements ProductService {
 	 * 
 	 * @param searchQueryDTO
 	 * @param orderList
+	 * @param range
 	 * @return
 	 */
-	private SearchRequestBuilder createQueries(SearchQueryDTO searchQueryDTO, List<Entry<String, Integer>> orderList) {
+	private SearchRequestBuilder createQueries(SearchQueryDTO searchQueryDTO, List<Entry<String, Integer>> orderList, Map<String, Integer> range) {
 		BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
-
 		if (null != searchQueryDTO.getAttributes()) {
 			Set<String> keys = searchQueryDTO.getAttributes().keySet();
 			for (String key : keys) {
 				List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
 
-				if("Size".equalsIgnoreCase(key)){
+				if(null!=range && range.keySet().contains(key)){
 					for (String value : attributeValuesList) {
 						String[] values = splitValue(value);
-						RangeQueryBuilder rq = QueryBuilders.rangeQuery("attributes.Size");
+						RangeQueryBuilder rq = QueryBuilders.rangeQuery("attributes."+key);
 						if(checkNumeric(values[0])){
 							rq.from(values[0]);
 						}
@@ -378,38 +385,44 @@ public class ProductServiceImpl implements ProductService {
 							rq.to(values[1]);
 						}
 						BoolQueryBuilder query = QueryBuilders.boolQuery();
-						queryBuilder.should(QueryBuilders.nestedQuery("attributes",query.must(rq),ScoreMode.Avg));
+						queryBuilder.must(QueryBuilders.nestedQuery("attributes",query.must(rq),ScoreMode.Avg));
 					}
 				}else{
-					if (null != attributeValuesList && searchQueryDTO.getAttributes().size() > 0) {
+					if (null != attributeValuesList && attributeValuesList.size() > 1) {
 						for (String value : attributeValuesList) {
-							queryBuilder.must(QueryBuilders.nestedQuery("attributes",
-									QueryBuilders.matchQuery("attributes." + key, value), ScoreMode.Avg));
-
+							queryBuilder.should(QueryBuilders.matchQuery("attributes." + key, value));
 						}
-					}
-				}
-				/*
-*/
+					}else if(null != attributeValuesList && attributeValuesList.size() > 0){
+						for (String value : attributeValuesList) {
+							queryBuilder.must(QueryBuilders.matchQuery("attributes." + key, value));
+						}//for
+						} //else if
+				}//else
 			}
 		}
-		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME)
-				.setQuery(QueryBuilders.boolQuery()
-						.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType()))
-						.must(queryBuilder));
-
+		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
+			plainBuilder.setQuery(QueryBuilders.boolQuery()
+					.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).
+							must(QueryBuilders.nestedQuery("attributes",queryBuilder,ScoreMode.Max)));
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
-
-
 		return plainBuilder;
-
 	}
 
+	/**
+	 * Check the numeric
+	 * @param val
+	 * @return
+	 */
 	private boolean checkNumeric(String val) {
 		return val != null && val.matches("[-+]?\\d*\\.?\\d+");
 	}
 
+	/**
+	 * Splits the value
+	 * @param value
+	 * @return
+	 */
 	private String[] splitValue(String value) {
 		return value.split("-");
 	}
@@ -423,42 +436,14 @@ public class ProductServiceImpl implements ProductService {
 			headers = excelutil.getHeaders();
 
 			Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
-
-			/*Map<String, String> topMap = new HashMap();
-			topMap.put("place", place);
-			topMap.put("type", type);
-			topMap.put("category", category);
-			Gson gson = new Gson();
-			String topJson = gson.toJson(topMap);
-*/
 			for (List<Object> list : combs) {
 				HashMap<String,Object> topMap = new HashMap<String,Object>();
 				topMap.put("place", place);
 				topMap.put("type", type);
 				topMap.put("category", category);
-
+				topMap.put("dummy","yes");
 				Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
-
 				topMap.put("attributes",excelMap);
-				/*Map<String, String> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
-				Map<String, Map<String, String>> myMap = new HashMap();
-				myMap.put("attributes", excelMap);
-				topMap.put("place", place);
-				topMap.put("type", type);
-				topMap.put("category", category);
-			*/
-				/*String json = gson.toJson(myMap);
-				IndexRequestBuilder req = client.prepareIndex(INDEX_NAME, TYPE_NAME);
-				req.setSource(topJson, XContentType.JSON); // .setSource(json, XContentType.JSON);
-				IndexResponse response = req.get();
-				req.setId(response.getId());
-				UpdateRequest updateRequest = new UpdateRequest();
-				updateRequest.index(INDEX_NAME);
-				updateRequest.type(TYPE_NAME);
-				updateRequest.id(response.getId());
-				updateRequest.doc(json, XContentType.JSON);
-				client.update(updateRequest).get();
-				*/// System.out.println("map is " + response.getId());
 				listOfProducts.add(topMap);
 			}
 		} catch (Exception e) {
