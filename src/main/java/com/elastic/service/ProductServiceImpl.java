@@ -374,7 +374,7 @@ public class ProductServiceImpl implements ProductService {
 			for (String key : keys) {
 				List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
 
-				if(null!=range && range.keySet().contains(key)){
+				if(null!=range && range.keySet().contains(key) && range.get(key)>0){
 					for (String value : attributeValuesList) {
 						String[] values = splitValue(value);
 						RangeQueryBuilder rq = QueryBuilders.rangeQuery("attributes."+key);
