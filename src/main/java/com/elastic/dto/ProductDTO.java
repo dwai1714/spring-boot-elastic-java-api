@@ -1,11 +1,24 @@
-package com.elastic.model;
+package com.elastic.dto;
+
+import com.elastic.model.Attributes_Order;
+import com.elastic.model.Product;
 
 import java.util.List;
 import java.util.Map;
 
 public class ProductDTO {
-	List<Product> products;
-	Map<String, List<String>> attributes;
+	private List<Product> products;
+	private Map<String, List<String>> attributes;
+
+	public List<ProductScoreDTO> getProductScoreDTOS() {
+		return productScoreDTOS;
+	}
+
+	public void setProductScoreDTOS(List<ProductScoreDTO> productScoreDTOS) {
+		this.productScoreDTOS = productScoreDTOS;
+	}
+
+	private List<ProductScoreDTO> productScoreDTOS;
 	//Map<String, Integer> order;
 
 

@@ -4,8 +4,8 @@ package com.elastic.service;
 import java.util.List;
 import java.util.Map;
 
-import com.elastic.model.ProductDTO;
-import com.elastic.model.SearchQueryDTO;
+import com.elastic.dto.ProductDTO;
+import com.elastic.dto.SearchQueryDTO;
 
 public interface ProductService {
 	static final String INDEX_NAME = "my_kala";

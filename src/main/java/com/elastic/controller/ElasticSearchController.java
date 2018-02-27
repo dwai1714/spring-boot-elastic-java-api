@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import com.elastic.model.ProductDTO;
-import com.elastic.model.SearchQueryDTO;
+import com.elastic.dto.ProductDTO;
+import com.elastic.dto.SearchQueryDTO;
 import com.elastic.service.ProductService;
 
 @CrossOrigin
