@@ -35,7 +35,9 @@ import com.google.gson.Gson;
 import org.springframework.util.StringUtils;
 
 @Service
-
+/**
+ * This class is for product services implementation
+ */
 public class ProductServiceImpl implements ProductService {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Autowired
@@ -108,9 +110,14 @@ public class ProductServiceImpl implements ProductService {
 		pDTO.setAttributes(facets);
 
 		addAdditionalValues(pDTO, facets, otherValueList);
-		//pDTO.setOrder(order);
 	}
 
+	/**
+	 *
+	 * @param pDTO
+	 * @param facets
+	 * @param otherValueList
+	 */
 	private void addAdditionalValues(ProductDTO pDTO, Map<String, List<String>> facets, Map<String, String> otherValueList) {
 		Set<String> otherValueKeys = otherValueList.keySet();
 		for(String otherValueKey:otherValueKeys){
@@ -358,12 +365,8 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
 		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
 		SearchRequestBuilder plainQBuilder = null;
-		if("Y".equals(searchQueryDTO.getDummy())){
 			plainQBuilder = createQueries(searchQueryDTO, orderList,range);
-		}else{
-			plainQBuilder = offerQuery.createOfferQueries(searchQueryDTO, orderList,range,importanceMap);
-		}
-	 	plainQBuilder.setSize(3000);
+		//plainQBuilder.setSize(3000);
 
 		logger.info("Preparing query");
 
@@ -372,16 +375,6 @@ public class ProductServiceImpl implements ProductService {
 		pDTO.setAttributes_orders(attributes_order);
 		createSearchResult(pDTO, order, response, facets,otherValueList);
 		//Get Offers Alogorithm
-		if(!"Y".equals(searchQueryDTO.getDummy())) {
-			List<ProductScoreDTO> searchResult = offersAlgorithm.filterProducts(pDTO.getProducts(), importanceMap, searchQueryDTO);
-			List<ProductScoreDTO> offerPriceResult = offersAlgorithm.filterProdcutsOnOfferPrice(searchResult, searchQueryDTO);
-			if (!(offerPriceResult.size() > 0))
-				offerPriceResult = offersAlgorithm.filterProdcutsOnMatchPrice(searchResult, searchQueryDTO);
-			if (offerPriceResult.size() > 0) {
-				offersAlgorithm.calculateOfferPrice(offerPriceResult, searchQueryDTO);
-				pDTO.setProductScoreDTOS(offerPriceResult);
-			}
-		}
 		return pDTO;
 	}
 
@@ -428,7 +421,8 @@ public class ProductServiceImpl implements ProductService {
 		}
 		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
 			plainBuilder.setQuery(QueryBuilders.boolQuery()
-					.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).
+					.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType()))
+					.mustNot(QueryBuilders.nestedQuery("attributes",QueryBuilders.existsQuery("attributes.Quantity"),ScoreMode.Max)).
 							must(QueryBuilders.nestedQuery("attributes",queryBuilder,ScoreMode.Max)));
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
 		plainBuilder.addAggregation(aggregation);
@@ -511,9 +505,58 @@ public class ProductServiceImpl implements ProductService {
 		return buckets;
 	}
 
+	@Override
+	public ProductDTO offersSearch(SearchQueryDTO searchQueryDTO) {
+		ProductDTO pDTO = new ProductDTO();
 
+		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(searchQueryDTO.getProductType());
+		SearchResponse attResponse = requestAttOrderBuilder.get();
+		SearchHit[] hits = attResponse.getHits().getHits();
+		Attributes_Order attributes_order = new Attributes_Order();
+		for(SearchHit hit : hits){
+			String source =hit.getSourceAsString();
+			if (source != null) {
+				Gson gson = new GsonBuilder().setDateFormat("yyyMMdd")
+						.create();
+				attributes_order = gson.fromJson(source, Attributes_Order.class);
+			}
+			String sourceAsString = hit.getSourceAsString();
 
+		}
+		if (hits.length == 0) {
+			logger.info("hits is zero");
+			return pDTO;
+		}
+		// getOrder list
+		List<Entry<String, Integer>> orderList = queryUtility.createOrderList(hits[0],"order");
+		Map<String,String> otherValueList = queryUtility.getAttributeValues(hits[0],"additionalValues");
+		// actual order of attributes
+		Map<String, Integer> order = queryUtility.getOrder(hits[0], "order");
+		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
+		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
+		SearchRequestBuilder plainQBuilder = null;
+		plainQBuilder = offerQuery.createOfferQueries(searchQueryDTO, orderList,range,importanceMap);
+		plainQBuilder.setSize(3000);
 
+		logger.info("Preparing query");
+
+		SearchResponse response = plainQBuilder.get();
+		Map<String, List<String>> facets = queryUtility.getFacets(response, orderList,hits[0]);
+		pDTO.setAttributes_orders(attributes_order);
+		createSearchResult(pDTO, order, response, facets,otherValueList);
+		//Get Offers Alogorithm
+
+			List<ProductScoreDTO> searchResult = offersAlgorithm.filterProducts(pDTO.getProducts(), importanceMap, searchQueryDTO);
+			List<ProductScoreDTO> offerPriceResult = offersAlgorithm.filterProdcutsOnOfferPrice(searchResult, searchQueryDTO);
+			//if (!(offerPriceResult.size() > 0))
+			offerPriceResult = offersAlgorithm.filterProdcutsOnMatchPrice(offerPriceResult, searchQueryDTO);
+			if (offerPriceResult.size() > 0) {
+				offersAlgorithm.calculateOfferPrice(offerPriceResult, searchQueryDTO);
+				pDTO.setProductScoreDTOS(offerPriceResult);
+			}
+
+		return pDTO;
+	}
 
 
 }

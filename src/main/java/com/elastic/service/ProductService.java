@@ -22,4 +22,6 @@ public interface ProductService {
 	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type, List<String> excelFileNames);
 
 	List<String> getAllProductTypes(Map queryMap);
+
+	ProductDTO offersSearch(SearchQueryDTO searchQueryDTO);
 }

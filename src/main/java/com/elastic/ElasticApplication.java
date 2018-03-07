@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 public class ElasticApplication  {
 
 	public static void main(String[] args) {
-		System.out.println("Inside Main Class");
 		SpringApplication.run(ElasticApplication.class, args);
 	}
 

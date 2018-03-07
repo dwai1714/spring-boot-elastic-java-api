@@ -14,11 +14,12 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
 @Component
+/**
+ * This class will handle query creation and execution logic in elastic server
+ */
 public class OfferQuery {
     @Autowired
     private TransportClient client;
@@ -48,7 +49,9 @@ public class OfferQuery {
                     BoolQueryBuilder insideQuery = QueryBuilders.boolQuery();
                     if (null != attributeValuesList) {
                         for (String value : attributeValuesList) {
-                            insideQuery.should(QueryBuilders.matchQuery("attributes." + key, value));
+                          {
+                                insideQuery.should(QueryBuilders.matchQuery("attributes." + key, value));
+                            }
                         }
                         createOuterQuery(key,insideQuery,importance,queryBuilder);
                     } //else if

@@ -19,8 +19,10 @@ public class ProductScoreComparator implements Comparator<ProductScoreDTO> {
     public int compare(ProductScoreDTO firstProductScoreDTO, ProductScoreDTO secondProductScoreDTO) {
         if(compareFlag.equals(QueryConstants.MATCH_PRICE)){
             return secondProductScoreDTO.getPriceMatchScore().compareTo(firstProductScoreDTO.getPriceMatchScore());
-        }else if(compareFlag.equals(QueryConstants.OFFER_PRICE)){
+        }else if(compareFlag.equals(QueryConstants.SCORE)){
             return secondProductScoreDTO.getScore().compareTo(firstProductScoreDTO.getScore());
+        }else if(compareFlag.equals(QueryConstants.OFFER_PRICE)){
+            return secondProductScoreDTO.getOfferPrice().compareTo(firstProductScoreDTO.getOfferPrice());
         }
         return 0;
     }

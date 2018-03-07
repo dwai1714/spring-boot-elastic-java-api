@@ -7,5 +7,9 @@ public class QueryConstants {
     public static final String ORDER_TYPE_NAME = "attributes_order";
     public static final String MATCH_PRICE = "matchPrice";
     public static final String OFFER_PRICE = "offerPrice";
+    public static final String SCORE = "score";
+    public static final String[] features = {"Feature1","Feature2","Feature3","Feature4","Feature5"};
+
+
 
 }

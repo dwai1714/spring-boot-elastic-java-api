@@ -44,6 +44,12 @@ public class ElasticSearchController {
 		return  productService.getAllProductTypes(queryMap);
 
 	}
+	@RequestMapping(method = RequestMethod.POST, value = "/offers", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ProductDTO doOffersSearch(@RequestBody SearchQueryDTO searchQueryDTO) throws Exception {
+		ProductDTO productDTO = productService.offersSearch(searchQueryDTO);
+		return productDTO;
+	}
+
 
 
 }

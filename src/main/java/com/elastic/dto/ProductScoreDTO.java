@@ -15,6 +15,25 @@ public class ProductScoreDTO implements Serializable,Comparable<ProductScoreDTO>
     private Double score;
     private Double priceMatchScore;
 
+    public ProductScoreDTO(Product product, Double score, Double priceMatchScore, Double difference, Double offerPrice) {
+        this.product = product;
+        this.score = score;
+        this.priceMatchScore = priceMatchScore;
+        this.difference = difference;
+        this.offerPrice = offerPrice;
+    }
+
+    public Double getDifference() {
+
+        return difference;
+    }
+
+    public void setDifference(Double difference) {
+        this.difference = difference;
+    }
+
+    private Double difference;
+
     public ProductScoreDTO(Product product, Double score, Double priceMatchScore, Double offerPrice) {
         this.product = product;
         this.score = score;
