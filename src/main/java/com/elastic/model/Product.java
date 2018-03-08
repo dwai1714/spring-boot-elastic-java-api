@@ -9,6 +9,16 @@ public class Product implements Serializable {
 	private String category;
 	private String type;
 
+	public String getShippingProfileId() {
+		return shippingProfileId;
+	}
+
+	public void setShippingProfileId(String shippingProfileId) {
+		this.shippingProfileId = shippingProfileId;
+	}
+
+	private String shippingProfileId;
+
 	public String getPlace() {
 		return place;
 	}

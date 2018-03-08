@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.elastic.dto.SearchQueryDTO;
 import org.elasticsearch.client.transport.TransportClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,5 +53,9 @@ public class ElasticTests {
 		System.out.println("Time End with TV is " + new Date());
 
 	}
+	@Test
+	public void checkRetailer() throws Exception {
+		service.retailerSearch(new SearchQueryDTO());
 
+	}
 }

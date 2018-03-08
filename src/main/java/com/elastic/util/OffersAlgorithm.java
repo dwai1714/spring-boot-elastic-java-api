@@ -119,9 +119,13 @@ public class OffersAlgorithm {
                 }
             } else {
                 for (String inputValue : inputValues) {
-                    if (actualValueList.contains(inputValue))
+                    for(String actual:actualValueList){
+                        if (actual.contains(inputValue)
+                                || inputValue.contains(actual))
                             score += importanceMap.get(key);
-                   }
+                    }
+                    }
+
             }
         }
         return score;

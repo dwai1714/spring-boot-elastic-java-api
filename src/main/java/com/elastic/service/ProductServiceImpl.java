@@ -5,7 +5,7 @@ import java.util.Map.Entry;
 
 import com.elastic.dto.ProductScoreDTO;
 import com.elastic.model.Attributes_Order;
-import com.elastic.util.OfferQuery;
+import com.elastic.dao.OfferQuery;
 import com.elastic.util.OffersAlgorithm;
 import com.elastic.util.QueryUtility;
 import com.google.gson.GsonBuilder;
@@ -32,7 +32,6 @@ import com.elastic.dto.ProductDTO;
 import com.elastic.dto.SearchQueryDTO;
 import com.elastic.util.ExcelUtility;
 import com.google.gson.Gson;
-import org.springframework.util.StringUtils;
 
 @Service
 /**
@@ -556,6 +555,12 @@ public class ProductServiceImpl implements ProductService {
 			}
 
 		return pDTO;
+	}
+
+	@Override
+	public ProductDTO retailerSearch(SearchQueryDTO searchQueryDTO) {
+		offerQuery.createRetailerFilterQuery();
+		return null;
 	}
 
 

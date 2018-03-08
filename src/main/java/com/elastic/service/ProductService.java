@@ -24,4 +24,6 @@ public interface ProductService {
 	List<String> getAllProductTypes(Map queryMap);
 
 	ProductDTO offersSearch(SearchQueryDTO searchQueryDTO);
+	ProductDTO retailerSearch(SearchQueryDTO searchQueryDTO);
+
 }

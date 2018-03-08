@@ -9,6 +9,9 @@ public class QueryConstants {
     public static final String OFFER_PRICE = "offerPrice";
     public static final String SCORE = "score";
     public static final String[] features = {"Feature1","Feature2","Feature3","Feature4","Feature5"};
+    public static final String INDEX_NAME_RETAILER = "my_kala_retailer_shipping";
+    public static final String TYPE_NAME_RETAILER = "retailer_shipping";
+
 
 
 

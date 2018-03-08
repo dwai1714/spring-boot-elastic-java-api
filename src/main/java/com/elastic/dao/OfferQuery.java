@@ -1,10 +1,12 @@
-package com.elastic.util;
+package com.elastic.dao;
 
 import com.elastic.constants.QueryConstants;
 import com.elastic.dto.SearchQueryDTO;
+import com.elastic.util.QueryUtility;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -68,7 +70,24 @@ public class OfferQuery {
                 must(QueryBuilders.nestedQuery("attributes",queryBuilder, ScoreMode.Max)));
         AggregationBuilder aggregation = getAggregationBuilder(orderList);
         plainBuilder.addAggregation(aggregation);
+        createRetailerFilterQuery();
         return plainBuilder;
+    }
+
+    /**
+     * This method will create retailer query
+     */
+    public void createRetailerFilterQuery() {
+        SearchRequestBuilder plainBuilder = client.prepareSearch(QueryConstants.INDEX_NAME_RETAILER).setTypes(QueryConstants.TYPE_NAME_RETAILER);
+        plainBuilder.setQuery(QueryBuilders.boolQuery()
+                .must(QueryBuilders.matchQuery("retialerId", "5a93e32d8998e6452cb9ed44"))
+                .should(QueryBuilders.nestedQuery("deliveryTiers.deliveryMethods",
+                        QueryBuilders.matchQuery("deliveryMethodName",
+                                "Express: 3 to 5 business days"),ScoreMode.Avg)));
+        SearchResponse response = plainBuilder.get();
+       // plainBuilder.get();
+        System.out.println(response);
+
     }
 
     /**
