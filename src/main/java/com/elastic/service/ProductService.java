@@ -4,8 +4,9 @@ package com.elastic.service;
 import java.util.List;
 import java.util.Map;
 
+import com.elastic.dto.ConsumerOffer;
 import com.elastic.dto.ProductDTO;
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 
 public interface ProductService {
 	static final String INDEX_NAME = "my_kala";
@@ -17,13 +18,13 @@ public interface ProductService {
 	public ProductDTO getProductDTO(String type);
 	public List getTypes();
 	public ProductDTO getProductDTOFullText(String fullText);
-	public ProductDTO getProductDTOMatchQuery(SearchQueryDTO searchQueryDTO);
+	public ProductDTO getProductDTOMatchQuery(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 	public void CreateData(String place, String category, String type, String excelFileName);
 	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type, List<String> excelFileNames);
 
 	List<String> getAllProductTypes(Map queryMap);
 
-	ProductDTO offersSearch(SearchQueryDTO searchQueryDTO);
-	ProductDTO retailerSearch(SearchQueryDTO searchQueryDTO);
+	ConsumerOffer offersSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
+	ProductDTO retailerSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 
 }

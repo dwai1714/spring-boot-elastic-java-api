@@ -3,7 +3,8 @@ package com.elastic.service;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.elastic.dto.ProductScoreDTO;
+import com.elastic.dto.ConsumerOffer;
+import com.elastic.dto.GetOfferResponseDTO;
 import com.elastic.model.Attributes_Order;
 import com.elastic.dao.OfferQuery;
 import com.elastic.util.OffersAlgorithm;
@@ -29,7 +30,7 @@ import org.springframework.stereotype.Service;
 
 import com.elastic.model.Product;
 import com.elastic.dto.ProductDTO;
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 import com.elastic.util.ExcelUtility;
 import com.google.gson.Gson;
 
@@ -100,8 +101,14 @@ public class ProductServiceImpl implements ProductService {
 			product.setCategory(sourceObject.get("category").toString());
 			product.setId(hit.getId());
 			product.setAttributes(attributes);
+            if(null!=sourceObject.get("retailerName")) {
+                product.setRetailerName(sourceObject.get("retailerName").toString());
+            }if(null!=sourceObject.get("productName")) {
+                product.setProductName(sourceObject.get("productName").toString());
+            }
+            product.setCategory(sourceObject.get("category").toString());
 
-			products.add(product);
+            products.add(product);
 
 		});
 		logger.info("Query Done");
@@ -333,12 +340,12 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public ProductDTO getProductDTOMatchQuery(SearchQueryDTO searchQueryDTO) {
+	public ProductDTO getProductDTOMatchQuery(GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
 
 
 		ProductDTO pDTO = new ProductDTO();
 
-		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(searchQueryDTO.getProductType());
+		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(getOfferSearchQueryDTO.getProductType());
 		SearchResponse attResponse = requestAttOrderBuilder.get();
 		SearchHit[] hits = attResponse.getHits().getHits();
 		Attributes_Order attributes_order = new Attributes_Order();
@@ -364,7 +371,7 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
 		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
 		SearchRequestBuilder plainQBuilder = null;
-			plainQBuilder = createQueries(searchQueryDTO, orderList,range);
+			plainQBuilder = createQueries(getOfferSearchQueryDTO, orderList,range);
 		//plainQBuilder.setSize(3000);
 
 		logger.info("Preparing query");
@@ -380,18 +387,18 @@ public class ProductServiceImpl implements ProductService {
 	/**
 	 * This method create queries for multiple options selected and product type
 	 * 
-	 * @param searchQueryDTO
+	 * @param getOfferSearchQueryDTO
 	 * @param orderList
 	 * @param range
 	 * @return
 	 */
-	private SearchRequestBuilder createQueries(SearchQueryDTO searchQueryDTO, List<Entry<String, Integer>> orderList, Map<String, Integer> range) {
+	private SearchRequestBuilder createQueries(GetOfferSearchQueryDTO getOfferSearchQueryDTO, List<Entry<String, Integer>> orderList, Map<String, Integer> range) {
 		BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
 		RangeQueryBuilder rq = null;
-		if (null != searchQueryDTO.getAttributes()) {
-			Set<String> keys = searchQueryDTO.getAttributes().keySet();
+		if (null != getOfferSearchQueryDTO.getAttributes()) {
+			Set<String> keys = getOfferSearchQueryDTO.getAttributes().keySet();
 			for (String key : keys) {
-				List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
+				List<String> attributeValuesList = getOfferSearchQueryDTO.getAttributes().get(key);
 
 				if(null!=range && range.keySet().contains(key) && range.get(key)>0){
 					for (String value : attributeValuesList) {
@@ -420,7 +427,7 @@ public class ProductServiceImpl implements ProductService {
 		}
 		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
 			plainBuilder.setQuery(QueryBuilders.boolQuery()
-					.must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType()))
+					.must(QueryBuilders.matchQuery("type", getOfferSearchQueryDTO.getProductType()))
 					.mustNot(QueryBuilders.nestedQuery("attributes",QueryBuilders.existsQuery("attributes.Quantity"),ScoreMode.Max)).
 							must(QueryBuilders.nestedQuery("attributes",queryBuilder,ScoreMode.Max)));
 		AggregationBuilder aggregation = getAggregationBuilder(orderList);
@@ -505,10 +512,10 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public ProductDTO offersSearch(SearchQueryDTO searchQueryDTO) {
+	public ConsumerOffer offersSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
 		ProductDTO pDTO = new ProductDTO();
 
-		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(searchQueryDTO.getProductType());
+		SearchRequestBuilder requestAttOrderBuilder = getAttributeSearchRequestBuilder(getOfferSearchQueryDTO.getProductType());
 		SearchResponse attResponse = requestAttOrderBuilder.get();
 		SearchHit[] hits = attResponse.getHits().getHits();
 		Attributes_Order attributes_order = new Attributes_Order();
@@ -524,7 +531,7 @@ public class ProductServiceImpl implements ProductService {
 		}
 		if (hits.length == 0) {
 			logger.info("hits is zero");
-			return pDTO;
+			return null;
 		}
 		// getOrder list
 		List<Entry<String, Integer>> orderList = queryUtility.createOrderList(hits[0],"order");
@@ -534,7 +541,7 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
 		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
 		SearchRequestBuilder plainQBuilder = null;
-		plainQBuilder = offerQuery.createOfferQueries(searchQueryDTO, orderList,range,importanceMap);
+		plainQBuilder = offerQuery.createOfferQueries(getOfferSearchQueryDTO, orderList,range,importanceMap);
 		plainQBuilder.setSize(3000);
 
 		logger.info("Preparing query");
@@ -544,21 +551,22 @@ public class ProductServiceImpl implements ProductService {
 		pDTO.setAttributes_orders(attributes_order);
 		createSearchResult(pDTO, order, response, facets,otherValueList);
 		//Get Offers Alogorithm
+		ConsumerOffer consumerOffer = new ConsumerOffer();
 
-			List<ProductScoreDTO> searchResult = offersAlgorithm.filterProducts(pDTO.getProducts(), importanceMap, searchQueryDTO);
-			List<ProductScoreDTO> offerPriceResult = offersAlgorithm.filterProdcutsOnOfferPrice(searchResult, searchQueryDTO);
+			List<GetOfferResponseDTO> searchResult = offersAlgorithm.filterProducts(pDTO.getProducts(), importanceMap, getOfferSearchQueryDTO);
+			List<GetOfferResponseDTO> offerPriceResult = offersAlgorithm.filterProdcutsOnOfferPrice(searchResult, getOfferSearchQueryDTO);
 			//if (!(offerPriceResult.size() > 0))
-			offerPriceResult = offersAlgorithm.filterProdcutsOnMatchPrice(offerPriceResult, searchQueryDTO);
+			offerPriceResult = offersAlgorithm.filterProdcutsOnMatchPrice(offerPriceResult, getOfferSearchQueryDTO);
 			if (offerPriceResult.size() > 0) {
-				offersAlgorithm.calculateOfferPrice(offerPriceResult, searchQueryDTO);
-				pDTO.setProductScoreDTOS(offerPriceResult);
+				offersAlgorithm.calculateOfferPrice(offerPriceResult, getOfferSearchQueryDTO);
+				consumerOffer.setGetOfferResponseDTOList(offerPriceResult);
 			}
 
-		return pDTO;
+		return consumerOffer;
 	}
 
 	@Override
-	public ProductDTO retailerSearch(SearchQueryDTO searchQueryDTO) {
+	public ProductDTO retailerSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
 		offerQuery.createRetailerFilterQuery();
 		return null;
 	}

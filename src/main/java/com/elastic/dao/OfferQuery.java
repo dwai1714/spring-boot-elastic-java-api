@@ -1,7 +1,7 @@
 package com.elastic.dao;
 
 import com.elastic.constants.QueryConstants;
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 import com.elastic.util.QueryUtility;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
@@ -28,45 +28,49 @@ public class OfferQuery {
     @Autowired
     QueryUtility queryUtility;
 
-    public  SearchRequestBuilder createOfferQueries(SearchQueryDTO searchQueryDTO, List<Map.Entry<String, Integer>> orderList, Map<String, Integer> range, Map<String, Integer> importance) {
+    public  SearchRequestBuilder createOfferQueries(GetOfferSearchQueryDTO getOfferSearchQueryDTO, List<Map.Entry<String, Integer>> orderList, Map<String, Integer> range, Map<String, Integer> importance) {
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
         RangeQueryBuilder rq = null;
-        if (null != searchQueryDTO.getAttributes()) {
-            Set<String> keys = searchQueryDTO.getAttributes().keySet();
+        if (null != getOfferSearchQueryDTO.getAttributes()) {
+            Set<String> keys = getOfferSearchQueryDTO.getAttributes().keySet();
             for (String key : keys) {
-                List<String> attributeValuesList = searchQueryDTO.getAttributes().get(key);
+                    List<String> attributeValuesList = getOfferSearchQueryDTO.getAttributes().get(key);
 
-                if(null!=range && range.keySet().contains(key) && range.get(key)>0){
-                    for (String value : attributeValuesList) {
-                        String[] values = queryUtility.splitValue(value);
-                        rq = QueryBuilders.rangeQuery("attributes."+key);
-                        if(queryUtility.checkNumeric(values[0])){
-                            rq.gte(values[0]);
-                        }
-                        if(queryUtility.checkNumeric((values[1]))){
-                            rq.lt(values[1]);
-                        }
-                    }
-                }else{
-                    BoolQueryBuilder insideQuery = QueryBuilders.boolQuery();
-                    if (null != attributeValuesList) {
+                    if (null != range && range.keySet().contains(key) && range.get(key) > 0) {
                         for (String value : attributeValuesList) {
-                          {
-                                insideQuery.should(QueryBuilders.matchQuery("attributes." + key, value));
+                            if (!"No Preference".equalsIgnoreCase(key)) {
+
+                                String[] values = queryUtility.splitValue(value);
+                                rq = QueryBuilders.rangeQuery("attributes." + key);
+                                if (queryUtility.checkNumeric(values[0])) {
+                                    rq.gte(values[0]);
+                                }
+                                if (queryUtility.checkNumeric((values[1]))) {
+                                    rq.lt(values[1]);
+                                }
                             }
                         }
-                        createOuterQuery(key,insideQuery,importance,queryBuilder);
-                    } //else if
-                }//else
-            }
+                    } else {
+                        BoolQueryBuilder insideQuery = QueryBuilders.boolQuery();
+                        if (null != attributeValuesList && !attributeValuesList.contains("No Preference")) {
+                            for (String value : attributeValuesList) {
+                                {
+                                    insideQuery.should(QueryBuilders.matchQuery("attributes." + key, value));
+                                }
+                            }
+                            createOuterQuery(key, insideQuery, importance, queryBuilder);
+                        } //else if
+                    }//else
+                }
+
         }
         SearchRequestBuilder plainBuilder = client.prepareSearch(QueryConstants.INDEX_NAME).setTypes(QueryConstants.TYPE_NAME);
         plainBuilder.setQuery(QueryBuilders.boolQuery()
-                .must(QueryBuilders.matchQuery("place", searchQueryDTO.getPlace()))
+                .must(QueryBuilders.matchQuery("place", getOfferSearchQueryDTO.getPlaceName()))
                 .must(QueryBuilders.nestedQuery("attributes",
                         QueryBuilders.existsQuery("attributes.Sale Price"),ScoreMode.Max))
-                .must(QueryBuilders.matchQuery("category", searchQueryDTO.getCategory()))
-                .must(QueryBuilders.matchQuery("type", searchQueryDTO.getProductType())).
+                .must(QueryBuilders.matchQuery("category", getOfferSearchQueryDTO.getCategoryName()))
+                .must(QueryBuilders.matchQuery("type", getOfferSearchQueryDTO.getProductType())).
                 must(QueryBuilders.nestedQuery("attributes",queryBuilder, ScoreMode.Max)));
         AggregationBuilder aggregation = getAggregationBuilder(orderList);
         plainBuilder.addAggregation(aggregation);
@@ -84,7 +88,7 @@ public class OfferQuery {
                 .should(QueryBuilders.nestedQuery("deliveryTiers.deliveryMethods",
                         QueryBuilders.matchQuery("deliveryMethodName",
                                 "Express: 3 to 5 business days"),ScoreMode.Avg)));
-        SearchResponse response = plainBuilder.get();
+        SearchResponse response = plainBuilder.get   ();
        // plainBuilder.get();
         System.out.println(response);
 

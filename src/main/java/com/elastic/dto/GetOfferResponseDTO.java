@@ -4,18 +4,48 @@ import com.elastic.model.Product;
 
 import java.io.Serializable;
 
-public class ProductScoreDTO implements Serializable,Comparable<ProductScoreDTO> {
+public class GetOfferResponseDTO implements Serializable{
     private Product product;
+    private String retailerName;
+    private String deliveryMethod;
+    private Double difference;
+    private Double score;
+    private Double priceMatchScore;
 
-    public ProductScoreDTO(Product product, Double score) {
+
+    public GetOfferResponseDTO(Product product, String retailerName, String deliveryMethod, Double score, Double priceMatchScore, Double difference, Double offerPrice) {
+        this.product = product;
+        this.retailerName = retailerName;
+        this.deliveryMethod = deliveryMethod;
+        this.score = score;
+        this.priceMatchScore = priceMatchScore;
+        this.difference = difference;
+        this.offerPrice = offerPrice;
+    }
+
+    public String getRetailerName() {
+        return retailerName;
+    }
+
+    public void setRetailerName(String retailerName) {
+        this.retailerName = retailerName;
+    }
+
+    public String getDeliveryMethod() {
+        return deliveryMethod;
+    }
+
+    public void setDeliveryMethod(String deliveryMethod) {
+        this.deliveryMethod = deliveryMethod;
+    }
+
+    public GetOfferResponseDTO(Product product, Double score) {
         this.product = product;
         this.score = score;
     }
 
-    private Double score;
-    private Double priceMatchScore;
 
-    public ProductScoreDTO(Product product, Double score, Double priceMatchScore, Double difference, Double offerPrice) {
+    public GetOfferResponseDTO(Product product, Double score, Double priceMatchScore, Double difference, Double offerPrice) {
         this.product = product;
         this.score = score;
         this.priceMatchScore = priceMatchScore;
@@ -32,9 +62,8 @@ public class ProductScoreDTO implements Serializable,Comparable<ProductScoreDTO>
         this.difference = difference;
     }
 
-    private Double difference;
 
-    public ProductScoreDTO(Product product, Double score, Double priceMatchScore, Double offerPrice) {
+    public GetOfferResponseDTO(Product product, Double score, Double priceMatchScore, Double offerPrice) {
         this.product = product;
         this.score = score;
         this.priceMatchScore = priceMatchScore;
@@ -62,10 +91,10 @@ public class ProductScoreDTO implements Serializable,Comparable<ProductScoreDTO>
     }
 
 
-    public ProductScoreDTO() {
+    public GetOfferResponseDTO() {
     }
 
-    public ProductScoreDTO(Product product, Double score, Double priceMatchScore) {
+    public GetOfferResponseDTO(Product product, Double score, Double priceMatchScore) {
         this.product = product;
         this.score = score;
         this.priceMatchScore = priceMatchScore;
@@ -88,9 +117,4 @@ public class ProductScoreDTO implements Serializable,Comparable<ProductScoreDTO>
     }
 
 
-    @Override
-    public int compareTo(ProductScoreDTO productScoreDTO) {
-        return this.score.compareTo(productScoreDTO.getScore());
-
     }
-}

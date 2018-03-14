@@ -1,9 +1,9 @@
 package com.elastic.util;
 
 import com.elastic.constants.QueryConstants;
-import com.elastic.dto.ProductScoreDTO;
+import com.elastic.dto.GetOfferResponseDTO;
 import com.elastic.model.Product;
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -35,14 +35,14 @@ public class OffersAlgorithm {
      * This method will filter the results
      * @param products
      * @param importanceMap
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      * @return
      */
-    public List<ProductScoreDTO> filterProducts(List<Product> products,
-                                        Map<String, Integer> importanceMap,
-                                        SearchQueryDTO searchQueryDTO) {
-        List<ProductScoreDTO> productScoreDTOList =  new ArrayList<ProductScoreDTO>();
-        Map<String,List<String>> attributes = searchQueryDTO.getAttributes();
+    public List<GetOfferResponseDTO> filterProducts(List<Product> products,
+                                                    Map<String, Integer> importanceMap,
+                                                    GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
+        List<GetOfferResponseDTO> getOfferResponseDTOList =  new ArrayList<GetOfferResponseDTO>();
+        Map<String,List<String>> attributes = getOfferSearchQueryDTO.getAttributes();
         Set<String> keys = attributes.keySet();
         for(Product product:products) {
              Double totalScore =new Double(0);
@@ -56,13 +56,15 @@ public class OffersAlgorithm {
             }//for
              totalScore = totalScore/(count*100);
             if(totalScore>thresholdValue){
-                ProductScoreDTO productScoreDTO =
-                        new ProductScoreDTO(product,totalScore);
-                productScoreDTOList.add(productScoreDTO);
+                GetOfferResponseDTO getOfferResponseDTO =
+                        new GetOfferResponseDTO(product,totalScore);
+                getOfferResponseDTO.setDeliveryMethod((String)product.getAttributes().get("DeliveryMethod"));
+                getOfferResponseDTO.setRetailerName("Best Buy");
+                getOfferResponseDTOList.add(getOfferResponseDTO);
             }
         }
-        Collections.sort(productScoreDTOList,new ProductScoreComparator(QueryConstants.SCORE));
-        return productScoreDTOList;
+        Collections.sort(getOfferResponseDTOList,new ProductScoreComparator(QueryConstants.SCORE));
+        return getOfferResponseDTOList;
 
     }
 
@@ -75,12 +77,13 @@ public class OffersAlgorithm {
      * @return
      */
     private Integer incrementCount(Integer count, String key, Map<String, List<String>> attributes, Map<String, Integer> importanceMap) {
-           if ("Features".equalsIgnoreCase(key)) {
-               count = count + ((List<String>) attributes.get(key)).size();
-           } else {
-               count++;
-           }
-
+         if(!attributes.get(key).contains("No Preference")) {
+             if ("Features".equalsIgnoreCase(key)) {
+                 count = count + ((List<String>) attributes.get(key)).size();
+             } else {
+                 count++;
+             }
+         }
         return count;
     }
 
@@ -112,16 +115,18 @@ public class OffersAlgorithm {
         if(null!=inputValues && inputValues.size()>0) {
             if (!isFeatures) {
                 for (String inputValue : inputValues) {
-                    if (actualValue.contains(inputValue) || inputValue.contains(actualValue)) {
+                    if (actualValue.toLowerCase().contains(inputValue.toLowerCase()) || inputValue.toLowerCase().contains(actualValue.toLowerCase())) {
                         score = importanceMap.get(key);
                         break;
                     }
                 }
             } else {
                 for (String inputValue : inputValues) {
+                    inputValue = inputValue.toLowerCase();
                     for(String actual:actualValueList){
+                        actual = actual.toLowerCase();
                         if (actual.contains(inputValue)
-                                || inputValue.contains(actual))
+                                || (inputValue).contains(actual))
                             score += importanceMap.get(key);
                     }
                     }
@@ -134,15 +139,15 @@ public class OffersAlgorithm {
     /**
      * This method will filter the products depending on offer price formula
      * @param searchResult
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      */
-    public List<ProductScoreDTO> filterProdcutsOnOfferPrice(List<ProductScoreDTO> searchResult, SearchQueryDTO searchQueryDTO) {
-        List<ProductScoreDTO> offerPriceProducts = new ArrayList<ProductScoreDTO>();
-        for(ProductScoreDTO productScoreDTO:searchResult){
-            Product product = productScoreDTO.getProduct();
+    public List<GetOfferResponseDTO> filterProdcutsOnOfferPrice(List<GetOfferResponseDTO> searchResult, GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
+        List<GetOfferResponseDTO> offerPriceProducts = new ArrayList<GetOfferResponseDTO>();
+        for(GetOfferResponseDTO getOfferResponseDTO :searchResult){
+            Product product = getOfferResponseDTO.getProduct();
             Map<String,Object> attributes = product.getAttributes();
             if(null!=attributes.get("Lowest Make An Offer Price")){
-                calculateDiffConsumerAndRetialerOfferPrice(searchQueryDTO, offerPriceProducts, productScoreDTO, attributes);
+                calculateDiffConsumerAndRetialerOfferPrice(getOfferSearchQueryDTO, offerPriceProducts, getOfferResponseDTO, attributes);
             }
         }//for loop end
 
@@ -151,32 +156,32 @@ public class OffersAlgorithm {
 
     /**
      * This method will calculate offer price .
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      * @param offerPriceProducts
-     * @param productScoreDTO
+     * @param getOfferResponseDTO
      * @param attributes
      */
-    private void calculateDiffConsumerAndRetialerOfferPrice(SearchQueryDTO searchQueryDTO, List<ProductScoreDTO> offerPriceProducts, ProductScoreDTO productScoreDTO, Map<String, Object> attributes) {
+    private void calculateDiffConsumerAndRetialerOfferPrice(GetOfferSearchQueryDTO getOfferSearchQueryDTO, List<GetOfferResponseDTO> offerPriceProducts, GetOfferResponseDTO getOfferResponseDTO, Map<String, Object> attributes) {
         Double retailerMinOfferPrice = Double.valueOf((String)attributes.get("Lowest Make An Offer Price"));
-        Double maxConsumerPrice = searchQueryDTO.getMaxOfferPrice();
-            productScoreDTO.setDifference(maxConsumerPrice-retailerMinOfferPrice);
-            offerPriceProducts.add(productScoreDTO);
+        Double maxConsumerPrice = getOfferSearchQueryDTO.getPrice().getMaxPrice();
+            getOfferResponseDTO.setDifference(maxConsumerPrice-retailerMinOfferPrice);
+            offerPriceProducts.add(getOfferResponseDTO);
         }
 
     /**
      * This method will filter the prodcts depends on match price formula
      * @param searchResult
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      * @return
      */
-    public List<ProductScoreDTO> filterProdcutsOnMatchPrice(List<ProductScoreDTO> searchResult,
-                                                            SearchQueryDTO searchQueryDTO) {
-        List<ProductScoreDTO> matchPriceProducts = new ArrayList<ProductScoreDTO>();
-        for(ProductScoreDTO productScoreDTO:searchResult){
-            Product product = productScoreDTO.getProduct();
+    public List<GetOfferResponseDTO> filterProdcutsOnMatchPrice(List<GetOfferResponseDTO> searchResult,
+                                                                GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
+        List<GetOfferResponseDTO> matchPriceProducts = new ArrayList<GetOfferResponseDTO>();
+        for(GetOfferResponseDTO getOfferResponseDTO :searchResult){
+            Product product = getOfferResponseDTO.getProduct();
             Map<String,Object> attributes = product.getAttributes();
             if(null!=attributes.get("Lowest Make An Offer Price")){
-                calculateMatchPrice(searchQueryDTO, matchPriceProducts, productScoreDTO, attributes);
+                calculateMatchPrice(getOfferSearchQueryDTO, matchPriceProducts, getOfferResponseDTO, attributes);
             }
         }//for loop end
         Collections.sort(matchPriceProducts,new ProductScoreComparator(QueryConstants.MATCH_PRICE));
@@ -188,52 +193,52 @@ public class OffersAlgorithm {
 
     /**
      * This method will calcualte match price
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      * @param matchPriceProducts
-     * @param productScoreDTO
+     * @param getOfferResponseDTO
      * @param attributes
      */
-    private void calculateMatchPrice(SearchQueryDTO searchQueryDTO, List<ProductScoreDTO> matchPriceProducts,
-                                     ProductScoreDTO productScoreDTO, Map<String, Object> attributes) {
+    private void calculateMatchPrice(GetOfferSearchQueryDTO getOfferSearchQueryDTO, List<GetOfferResponseDTO> matchPriceProducts,
+                                     GetOfferResponseDTO getOfferResponseDTO, Map<String, Object> attributes) {
         Double retailerMinOfferPrice = Double.valueOf((String)attributes.get("Lowest Make An Offer Price"));
-        Double maxConsumerPrice = searchQueryDTO.getMaxOfferPrice();
-        Double matchFactorScore = productScoreDTO.getScore();
+        Double maxConsumerPrice = getOfferSearchQueryDTO.getPrice().getMaxPrice();
+        Double matchFactorScore = getOfferResponseDTO.getScore();
         Double calcualteFactorScore = matchFactorScore*kalaCoefficientFactor;
         Double priceMatchScore = (maxConsumerPrice-retailerMinOfferPrice)+calcualteFactorScore;
-            productScoreDTO.setPriceMatchScore(new BigDecimal(priceMatchScore).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-            matchPriceProducts.add(productScoreDTO);
+            getOfferResponseDTO.setPriceMatchScore(new BigDecimal(priceMatchScore).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+            matchPriceProducts.add(getOfferResponseDTO);
      }
 
     /**
      * This method will calculate for each of the product going to be offered
      * @param offerPriceResult
-     * @param searchQueryDTO
+     * @param getOfferSearchQueryDTO
      */
-    public void calculateOfferPrice(List<ProductScoreDTO> offerPriceResult,
-                                    SearchQueryDTO searchQueryDTO) {
-        for(ProductScoreDTO productScoreDTO:offerPriceResult){
-            Map<String,Object> attributes = productScoreDTO.getProduct().getAttributes();
+    public void calculateOfferPrice(List<GetOfferResponseDTO> offerPriceResult,
+                                    GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
+        for(GetOfferResponseDTO getOfferResponseDTO :offerPriceResult){
+            Map<String,Object> attributes = getOfferResponseDTO.getProduct().getAttributes();
             Double productPrice = Double.valueOf  ((String)attributes.get("Sale Price"));
             Double minRetailerOfferPrice = Double.valueOf((String)attributes.get("Lowest Make An Offer Price"));
             Double offerPrice = new Double(0);
-          if((productPrice>searchQueryDTO.getMaxOfferPrice() )
-                  && searchQueryDTO.getMaxOfferPrice()>minRetailerOfferPrice ){
+          if((productPrice> getOfferSearchQueryDTO.getPrice().getMaxPrice() )
+                  && getOfferSearchQueryDTO.getPrice().getMaxPrice()>minRetailerOfferPrice ){
                offerPrice = minRetailerOfferPrice
-                      +((searchQueryDTO.getMaxOfferPrice()-minRetailerOfferPrice)
-                      *(searchQueryDTO.getMinOfferPrice()/searchQueryDTO.getMaxOfferPrice()));
-          }else if((productPrice>searchQueryDTO.getMaxOfferPrice() ) &&
-                  searchQueryDTO.getMaxOfferPrice()<minRetailerOfferPrice){
+                      +((getOfferSearchQueryDTO.getPrice().getMaxPrice()-minRetailerOfferPrice)
+                      *(getOfferSearchQueryDTO.getPrice().getMinPrice()/ getOfferSearchQueryDTO.getPrice().getMaxPrice()));
+          }else if((productPrice> getOfferSearchQueryDTO.getPrice().getMaxPrice() ) &&
+                  getOfferSearchQueryDTO.getPrice().getMaxPrice()<minRetailerOfferPrice){
                offerPrice = minRetailerOfferPrice
                       +((productPrice-minRetailerOfferPrice)/xKalaCoefficientFactor)
-                      *((productPrice-searchQueryDTO.getMaxOfferPrice())/yKalaCoefficientFactor);
+                      *((productPrice- getOfferSearchQueryDTO.getPrice().getMaxPrice())/yKalaCoefficientFactor);
 
-          }else if((searchQueryDTO.getMaxOfferPrice()<productPrice)
-                  && (searchQueryDTO.getMaxOfferPrice()==minRetailerOfferPrice)){
-              offerPrice = productPrice-(yKalaCoefficientFactor*(productPrice-searchQueryDTO.getMinOfferPrice()));
-          }else if(searchQueryDTO.getMaxOfferPrice()>productPrice){
+          }else if((getOfferSearchQueryDTO.getPrice().getMaxPrice()<productPrice)
+                  && (getOfferSearchQueryDTO.getPrice().getMaxPrice()==minRetailerOfferPrice)){
+              offerPrice = productPrice-(yKalaCoefficientFactor*(productPrice- getOfferSearchQueryDTO.getPrice().getMinPrice()));
+          }else if(getOfferSearchQueryDTO.getPrice().getMaxPrice()>productPrice){
               offerPrice = productPrice;
           }
-          productScoreDTO.setOfferPrice(new BigDecimal(offerPrice).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+          getOfferResponseDTO.setOfferPrice(new BigDecimal(offerPrice).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         }//for
     Collections.sort(offerPriceResult,new ProductScoreComparator(QueryConstants.OFFER_PRICE));
     }

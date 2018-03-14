@@ -8,6 +8,35 @@ public class Product implements Serializable {
 	private String place;
 	private String category;
 	private String type;
+	private String retailerName;
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+
+    private String productName;
+
+	public String getRetailerName() {
+		return retailerName;
+	}
+
+	public void setRetailerName(String retailerName) {
+		this.retailerName = retailerName;
+	}
+
+	public String getRetailerId() {
+		return retailerId;
+	}
+
+	public void setRetailerId(String retailerId) {
+		this.retailerId = retailerId;
+	}
+
+	private String retailerId;
 
 	public String getShippingProfileId() {
 		return shippingProfileId;
@@ -27,13 +56,6 @@ public class Product implements Serializable {
 		this.place = place;
 	}
 
-	public Product(String id, String place, String category, String type, Map<String, Object> attributes) {
-		this.id = id;
-		this.place = place;
-		this.category = category;
-		this.type = type;
-		this.attributes = attributes;
-		}
 
 	public String getCategory() {
 

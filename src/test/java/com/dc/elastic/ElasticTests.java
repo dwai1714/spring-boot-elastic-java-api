@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 import org.elasticsearch.client.transport.TransportClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,21 +41,21 @@ public class ElasticTests {
 		List<String> myList = new ArrayList<String>();
 		myList.add("D:\\shravan\\files\\Bidet.xlsx");
 		myList.add("D:\\shravan\\files\\Parts-urinal.xlsx");
-		myList.add("D:\\shravan\\files\\Toilet.xlsx");
+		myList.add("D:\\shravan\\files\\Copy of Toilet.xlsx");
 		myList.add("D:\\shravan\\files\\Urinals.xlsx");
 		myList.add("D:\\shravan\\files\\parts-bidet.xlsx");
 		myList.add("D:\\shravan\\files\\parts-toilet.xlsx");
 		service.CreateSameTypeDataWithMultipleExcel("Home & Garden","Bathroom", "Toilets", myList);
 		System.out.println("Time End with Toilets is " + new Date());
-		List<String> tvFile = new ArrayList<String>();
+		/*List<String> tvFile = new ArrayList<String>();
 		tvFile.add("D:\\shravan\\files\\TV.xlsx");
 		service.CreateSameTypeDataWithMultipleExcel("Electronics","TV and Home Theater", "TV",tvFile );
-		System.out.println("Time End with TV is " + new Date());
+		*/System.out.println("Time End with TV is " + new Date());
 
 	}
 	@Test
 	public void checkRetailer() throws Exception {
-		service.retailerSearch(new SearchQueryDTO());
+		service.retailerSearch(new GetOfferSearchQueryDTO());
 
 	}
 }

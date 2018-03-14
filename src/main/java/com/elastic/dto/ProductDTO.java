@@ -10,15 +10,15 @@ public class ProductDTO {
 	private List<Product> products;
 	private Map<String, List<String>> attributes;
 
-	public List<ProductScoreDTO> getProductScoreDTOS() {
-		return productScoreDTOS;
+	public List<GetOfferResponseDTO> getGetOfferResponseDTOS() {
+		return getOfferResponseDTOS;
 	}
 
-	public void setProductScoreDTOS(List<ProductScoreDTO> productScoreDTOS) {
-		this.productScoreDTOS = productScoreDTOS;
+	public void setGetOfferResponseDTOS(List<GetOfferResponseDTO> getOfferResponseDTOS) {
+		this.getOfferResponseDTOS = getOfferResponseDTOS;
 	}
 
-	private List<ProductScoreDTO> productScoreDTOS;
+	private List<GetOfferResponseDTO> getOfferResponseDTOS;
 	//Map<String, Integer> order;
 
 

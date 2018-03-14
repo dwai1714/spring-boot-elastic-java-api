@@ -1,14 +1,16 @@
 package com.elastic.controller;
 
-import java.util.List;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
+import com.elastic.dto.ConsumerOffer;
+import com.elastic.dto.DeliveryLocationDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import com.elastic.dto.ProductDTO;
-import com.elastic.dto.SearchQueryDTO;
+import com.elastic.dto.GetOfferSearchQueryDTO;
 import com.elastic.service.ProductService;
 
 @CrossOrigin
@@ -34,8 +36,8 @@ public class ElasticSearchController {
 	}
 
 	@RequestMapping(method = RequestMethod.POST, value = "/partial", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ProductDTO doPartialSearch(@RequestBody SearchQueryDTO searchQueryDTO) throws Exception {
-		ProductDTO productDTO = productService.getProductDTOMatchQuery(searchQueryDTO);
+	public ProductDTO doPartialSearch(@RequestBody GetOfferSearchQueryDTO getOfferSearchQueryDTO) throws Exception {
+		ProductDTO productDTO = productService.getProductDTOMatchQuery(getOfferSearchQueryDTO);
 		return productDTO;
 	}
 	@RequestMapping(method = RequestMethod.GET, value = "/types",produces = MediaType.APPLICATION_JSON_VALUE)
@@ -45,11 +47,38 @@ public class ElasticSearchController {
 
 	}
 	@RequestMapping(method = RequestMethod.POST, value = "/offers", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ProductDTO doOffersSearch(@RequestBody SearchQueryDTO searchQueryDTO) throws Exception {
-		ProductDTO productDTO = productService.offersSearch(searchQueryDTO);
+	public ConsumerOffer doOffersSearch(@RequestBody GetOfferSearchQueryDTO getOfferSearchQueryDTO) throws Exception {
+		List <String> zipCodes = new ArrayList<String>();
+		for(DeliveryLocationDTO deliveryLocationDTO: getOfferSearchQueryDTO.getDeliveryLocation()){
+			zipCodes.add(deliveryLocationDTO.getZipcode());
+		}
+		setRetailerAttributes(getOfferSearchQueryDTO, zipCodes);
+		ConsumerOffer productDTO = productService.offersSearch(getOfferSearchQueryDTO);
+		setSearchQueryParams(getOfferSearchQueryDTO);
+		productDTO.setGetOffersRequestDTO(getOfferSearchQueryDTO);
+
 		return productDTO;
 	}
 
+	private void setSearchQueryParams(@RequestBody GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
+		getOfferSearchQueryDTO.setSubCategoryName(getOfferSearchQueryDTO.getProductType());
+		getOfferSearchQueryDTO.setStartDate(new Date());
+		Calendar c = Calendar.getInstance();
+		c.setTime(new Date()); // Now use today date.
+		c.add(Calendar.DATE, 3); // Adding 5 days
+		Date toDateOutput = c.getTime();
+
+		getOfferSearchQueryDTO.setEndDate(toDateOutput);
+	}
+
+	private void setRetailerAttributes(@RequestBody GetOfferSearchQueryDTO getOfferSearchQueryDTO, List<String> zipCodes) {
+		Map<String,List<String> > attributes = getOfferSearchQueryDTO.getAttributes();
+		attributes.put("Zipcode",zipCodes);
+		List<String> deliveryMethod = new ArrayList<String>();
+		deliveryMethod.add(getOfferSearchQueryDTO.getDeliveryMethod());
+		attributes.put("DeliveryMethod",deliveryMethod);
+		getOfferSearchQueryDTO.setAttributes(attributes);
+	}
 
 
 }
