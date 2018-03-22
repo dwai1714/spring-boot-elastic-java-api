@@ -11,14 +11,23 @@ import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import com.google.gson.Gson;
+import org.springframework.web.multipart.MultipartFile;
 
 public class ExcelUtility {
 
 	private String fileName;
+
+	public MultipartFile[] getMultipartFiles() {
+		return multipartFiles;
+	}
+
+	public void setMultipartFiles(MultipartFile[] multipartFiles) {
+		this.multipartFiles = multipartFiles;
+	}
+
+	private MultipartFile[] multipartFiles;
 	
 	public String getFileName() {
 		return fileName;
@@ -66,6 +75,28 @@ public class ExcelUtility {
 		return combinations;
 	}
 
+	public List<String> getHeaders(MultipartFile multipartFile) throws IOException {
+
+		//FileInputStream file = new FileInputStream(new File(fileName));
+		XSSFWorkbook workbook = new XSSFWorkbook(multipartFile.getInputStream());
+
+		// Get first sheet from the workbook
+		XSSFSheet sheet = workbook.getSheetAt(0);
+//
+		// Assuming "column headers" are in the first row
+		XSSFRow header_row = sheet.getRow(0);
+		int noOfColumns = sheet.getRow(0).getLastCellNum();
+		List<String> headers = new ArrayList<String>();
+
+		for (int i = 0; i < noOfColumns; i++) {
+			XSSFCell header_cell = header_row.getCell(i);
+			headers.add(header_cell.getStringCellValue());
+			// Do something with string
+		}
+		workbook.close();
+		//file.close();
+		return headers;
+	}
 	public List<String> getHeaders() throws IOException {
 
 		FileInputStream file = new FileInputStream(new File(fileName));
@@ -73,7 +104,7 @@ public class ExcelUtility {
 
 		// Get first sheet from the workbook
 		XSSFSheet sheet = workbook.getSheetAt(0);
-
+//
 		// Assuming "column headers" are in the first row
 		XSSFRow header_row = sheet.getRow(0);
 		int noOfColumns = sheet.getRow(0).getLastCellNum();
@@ -89,7 +120,7 @@ public class ExcelUtility {
 		return headers;
 	}
 
-	public <T> List<List<Object>> getColumnAsArray() throws Exception {
+	public <T> List<List<Object>> getColumnAsArray(String fileName) throws Exception {
 		{
 
 			List<List<Object>> lists = new ArrayList();
@@ -158,7 +189,7 @@ public class ExcelUtility {
 
 	public void createJson() throws Exception {
 		List<String> headers = getHeaders();
-		Set<List<Object>> combs = getCombinations(getColumnAsArray());
+		Set<List<Object>> combs = getCombinations(getColumnAsArray(fileName));
 		for (List<Object> list : combs) {
 			Map<String, Object> excelMap = combineListsIntoOrderedMap(headers, list);
 			Gson gson = new Gson();
@@ -237,4 +268,73 @@ public class ExcelUtility {
 		return attributes_metadata;
 
 	}
+
+	/**
+	 *
+	 *
+	 * @param multipartFile
+	 * @param <T>
+	 * @return
+	 * @throws Exception
+	 */
+	public <T> List<List<Object>> getColumnsAsArray(MultipartFile multipartFile) throws Exception {
+		{
+
+			List<List<Object>> lists = new ArrayList();
+			try {
+
+
+				//FileInputStream file = new FileInputStream(new File(multipartFile.getInputStream()));
+
+				// Get the workbook instance for XLS file
+				XSSFWorkbook workbook = new XSSFWorkbook(multipartFile.getInputStream());
+
+				// Get first sheet from the workbook
+				XSSFSheet sheet = workbook.getSheetAt(0);
+
+				int noOfColumns = sheet.getRow(0).getLastCellNum();
+				System.out.println(noOfColumns);
+
+				// Iterate through each rows from first sheet
+				for (int i = 0; i < noOfColumns; i++) {
+					List<Object> col = new ArrayList<Object>();
+
+					Iterator<Row> rowIterator = sheet.iterator();
+
+					while (rowIterator.hasNext()) {
+
+						Row row = rowIterator.next();
+						// System.out.print("Rownum is " + row.getRowNum());
+						if (row.getRowNum() != 0) {
+							Cell cell = row.getCell(i);
+
+							if (cell != null) {
+								// add the values of the cell to the Arraylist
+								if (cell.getCellTypeEnum() == CellType.NUMERIC) {
+								String val = String.valueOf(cell.getNumericCellValue());
+									col.add(new Double(cell.getNumericCellValue()));
+								} else if (cell.getCellTypeEnum() == CellType.STRING) {
+									col.add(cell.getStringCellValue());
+								} else if (cell.getCellTypeEnum() == CellType._NONE) {
+									col.add(cell.getStringCellValue());
+								}
+							}
+
+						}
+
+					}
+					lists.add(col);
+
+				}
+
+				return lists;
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+
 }

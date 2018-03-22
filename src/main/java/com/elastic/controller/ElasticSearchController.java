@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import com.elastic.service.ProductService;
+import org.springframework.web.multipart.MultipartFile;
 
 @CrossOrigin
 @RestController
@@ -79,15 +80,19 @@ public class ElasticSearchController {
 	}
 
 	@RequestMapping(method = RequestMethod.POST, value = "/upload", produces = MediaType.APPLICATION_JSON_VALUE)
-	public void doPartialSearch(@RequestBody UploadDTO uploadDTO) throws Exception {
-		String uploadType = uploadDTO.getUploadType();
+	public void doPartialSearch(@RequestParam(name="files",required=false)MultipartFile[] multipartFiles,
+								@RequestParam(name="placeName",required=false)String place,
+								@RequestParam(name="category",required=false)String category,
+								@RequestParam(name="subCategory",required=false)String subCategory,
+								@RequestParam(name="uploadType",required=false)String uploadType) throws Exception {
+
+		UploadDTO uploadDTO = new UploadDTO(place,category,subCategory,uploadType,multipartFiles);
+		//String uploadType = uploadDTO.getUploadType();
 		if("Config".equalsIgnoreCase(uploadType)){
-			productService.CreateConfigurationData(uploadDTO.getPlaceName(),
-					uploadDTO.getCategoryName(),uploadDTO.getSubCategoryName(),uploadDTO.getFileNames().get(0));
+			productService.CreateConfigurationData(uploadDTO);
 
 		}else{
-			productService.CreateSameTypeDataWithMultipleExcel(uploadDTO.getPlaceName(),uploadDTO.getCategoryName(),
-					uploadDTO.getSubCategoryName(),uploadDTO.getFileNames());
+			productService.CreateSameTypeDataWithMultipleExcel(uploadDTO);
 		}
 		//ProductDTO productDTO = productService.getProductDTOMatchQuery(getOfferSearchQueryDTO);
 			}

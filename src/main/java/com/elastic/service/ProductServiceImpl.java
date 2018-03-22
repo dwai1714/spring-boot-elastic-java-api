@@ -3,8 +3,7 @@ package com.elastic.service;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.elastic.dto.ConsumerOffer;
-import com.elastic.dto.GetOfferResponseDTO;
+import com.elastic.dto.*;
 import com.elastic.model.Attributes_Order;
 import com.elastic.dao.OfferQuery;
 import com.elastic.util.OffersAlgorithm;
@@ -29,10 +28,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.elastic.model.Product;
-import com.elastic.dto.ProductDTO;
-import com.elastic.dto.GetOfferSearchQueryDTO;
 import com.elastic.util.ExcelUtility;
 import com.google.gson.Gson;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 /**
@@ -436,23 +434,23 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 
-	@Override
-	public void CreateData(String place, String category, String type, String excelFileName) {
+	public void CreateData(UploadDTO uploadDTO, MultipartFile multiPartFile) {
 		ExcelUtility excelutil = new ExcelUtility();
-		excelutil.setFileName(excelFileName);
+		excelutil.setMultipartFiles(uploadDTO.getMultiPartFiles());
 		List<String> headers;
 		try {
-			headers = excelutil.getHeaders();
+			headers = excelutil.getHeaders(multiPartFile);
 
 			//Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
-			List<List<Object>> columnList = excelutil.getColumnAsArray();
+			List<List<Object>> columnList = excelutil.getColumnsAsArray(multiPartFile);
 			/*for (List<Object> list : columnList)*/ {
 				HashMap<String,Object> topMap = new HashMap<String,Object>();
-				topMap.put("place", place);
-				topMap.put("type", type);
-				topMap.put("category", category);
-				topMap.put("dummy","yes");
-				Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMapWithArray(headers, columnList);
+				topMap.put("place", uploadDTO.getPlaceName());
+				topMap.put("type", uploadDTO.getSubCategoryName());
+				topMap.put("category", uploadDTO.getSubCategoryName());
+				//topMap.put("dummy","yes");
+				Map<String, Object> excelMap = excelutil.
+						combineListsIntoOrderedMapWithArray(headers, columnList);
 				topMap.put("attributes",excelMap);
 				listOfProducts.add(topMap);
 			}
@@ -464,11 +462,10 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type,
-			List<String> excelFileNames) {
+	public void CreateSameTypeDataWithMultipleExcel(UploadDTO uploadDTO) {
 		listOfProducts = new ArrayList<HashMap<String, Object>>();
-		for (int i = 0; i < excelFileNames.size(); i++) {
-			CreateData(place, category, type, excelFileNames.get(i));
+		for (MultipartFile multiPartFile:uploadDTO.getMultiPartFiles()) {
+			CreateData(uploadDTO,multiPartFile);
 		}
 		doCommit();
 
@@ -575,15 +572,15 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	public void CreateConfigurationData(String electronics, String tv_and_home_theater, String tv, String excelFileName) {
+	public void CreateConfigurationData(UploadDTO uploadDTO) {
 		ExcelUtility excelutil = new ExcelUtility();
-		excelutil.setFileName(excelFileName);
+		excelutil.setMultipartFiles(uploadDTO.getMultiPartFiles());
 		List<String> headers;
 		try {
-			headers = excelutil.getHeaders();
-			List<List<Object>> columnList = excelutil.getColumnAsArray();
+			headers = excelutil.getHeaders(uploadDTO.getMultiPartFiles()[0]);
+			List<List<Object>> columnList = excelutil.getColumnsAsArray(uploadDTO.getMultiPartFiles()[0]);
 			HashMap<String,Object> topMap = new HashMap<String,Object>();
-				topMap.put("type", tv);
+				topMap.put("type", uploadDTO.getSubCategoryName());
 				Map<String,Map<String,Object>> excelMap = excelutil.createConfigData(headers);
 				topMap.put("attributes_metadata",excelMap);
 			BulkRequestBuilder brb = client.prepareBulk();

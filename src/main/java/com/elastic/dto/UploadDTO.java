@@ -1,5 +1,7 @@
 package com.elastic.dto;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -32,13 +34,7 @@ public class UploadDTO implements Serializable {
         return uploadType;
     }
 
-    public List<String> getFileNames() {
-        return fileNames;
-    }
 
-    public void setFileNames(List<String> fileNames) {
-        this.fileNames = fileNames;
-    }
 
     public void setUploadType(String uploadType) {
         this.uploadType = uploadType;
@@ -47,6 +43,24 @@ public class UploadDTO implements Serializable {
     private String placeName;
     private String categoryName;
     private String subCategoryName;
-private String uploadType;
-private List<String> fileNames;
+    private String uploadType;
+
+
+    public MultipartFile[] getMultiPartFiles() {
+        return multiPartFiles;
+    }
+
+    public void setMultiPartFiles(MultipartFile[] multiPartFiles) {
+        this.multiPartFiles = multiPartFiles;
+    }
+
+    public UploadDTO(String placeName, String categoryName, String subCategoryName, String uploadType, MultipartFile[] multiPartFiles) {
+        this.placeName = placeName;
+        this.categoryName = categoryName;
+        this.subCategoryName = subCategoryName;
+        this.uploadType = uploadType;
+        this.multiPartFiles = multiPartFiles;
+    }
+
+    private MultipartFile[] multiPartFiles;
 }

@@ -7,10 +7,12 @@ import java.util.Map;
 import com.elastic.dto.ConsumerOffer;
 import com.elastic.dto.ProductDTO;
 import com.elastic.dto.GetOfferSearchQueryDTO;
+import com.elastic.dto.UploadDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ProductService {
 	static final String INDEX_NAME = "my_kala";
-	static final String TYPE_NAME = "products";
+	static final String TYPE_NAME = "proPducts";
 
 	static final String INDEX_NAME_TEST = "my_test";
 	static final String TYPE_NAME_TEST = "test_products";
@@ -23,13 +25,13 @@ public interface ProductService {
 	public List getTypes();
 	public ProductDTO getProductDTOFullText(String fullText);
 	public ProductDTO getProductDTOMatchQuery(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
-	public void CreateData(String place, String category, String type, String excelFileName);
-	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type, List<String> excelFileNames);
+	public void CreateData(UploadDTO uploadDTO, MultipartFile multiPartFile);
+	public void CreateSameTypeDataWithMultipleExcel(UploadDTO uploadDTO);
 
 	List<String> getAllProductTypes(Map queryMap);
 
 	ConsumerOffer offersSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 	ProductDTO retailerSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 
-	void CreateConfigurationData(String place, String category, String subCategory, String tvFile);
+	void CreateConfigurationData(UploadDTO uploadDTO);
 }
