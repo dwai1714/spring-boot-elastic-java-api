@@ -1,11 +1,19 @@
 package com.elastic.service;
 
+import java.io.ByteArrayInputStream;
+import java.net.URI;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.amazonaws.*;
+import com.amazonaws.auth.AWS4Signer;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.http.*;
+import com.amazonaws.util.IOUtils;
 import com.elastic.dto.*;
 import com.elastic.model.Attributes_Order;
 import com.elastic.dao.OfferQuery;
+import com.elastic.util.AmazonUtil;
 import com.elastic.util.OffersAlgorithm;
 import com.elastic.util.QueryUtility;
 import com.google.gson.GsonBuilder;
@@ -39,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile;
  * This class is for product services implementation
  */
 public class ProductServiceImpl implements ProductService {
+
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Autowired
 	private TransportClient client;
@@ -49,6 +58,10 @@ public class ProductServiceImpl implements ProductService {
 	@Autowired
 	QueryUtility queryUtility;
 	List<HashMap<String,Object>> listOfProducts = null;
+
+	@Autowired
+	AmazonUtil amazonUtil;
+
 
 	@Override
 	public ProductDTO getProductDTO(String type) {
@@ -469,9 +482,18 @@ public class ProductServiceImpl implements ProductService {
 		for (MultipartFile multiPartFile:uploadDTO.getMultiPartFiles()) {
 			CreateData(uploadDTO,multiPartFile);
 		}
-		doCommit();
+		doCommitInAws();
 
 
+	}
+
+	/**
+	 * This method will call the logic for elastic search
+	 */
+	private void doCommitInAws() {
+		for (HashMap<String, Object> product : listOfProducts) {
+		amazonUtil.doCommitInAWS(product.toString());
+		}
 	}
 
 	private void doCommit() {
@@ -491,6 +513,7 @@ public class ProductServiceImpl implements ProductService {
 		}
 			BulkResponse bulkResponse = brb.execute().actionGet();
 	}
+
 
 	@Override
 	public List<String> getAllProductTypes(Map queryMap) {

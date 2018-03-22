@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface ProductService {
 	static final String INDEX_NAME = "my_kala";
-	static final String TYPE_NAME = "proPducts";
+	static final String TYPE_NAME = "products";
 
 	static final String INDEX_NAME_TEST = "my_test";
 	static final String TYPE_NAME_TEST = "test_products";

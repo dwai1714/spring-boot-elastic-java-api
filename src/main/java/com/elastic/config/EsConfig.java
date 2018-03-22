@@ -1,5 +1,7 @@
 package com.elastic.config;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
@@ -31,7 +33,12 @@ public class EsConfig {
 
 		return client;
 	}
-	
+
+	@Bean
+	public AWSCredentials awsCredentials() throws UnknownHostException {
+
+		return new DefaultAWSCredentialsProviderChain().getCredentials();
+		}
 
     
 	// Add transport addresses and do something with the client...
