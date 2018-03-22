@@ -13,6 +13,8 @@ import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -595,5 +597,13 @@ public class ProductServiceImpl implements ProductService {
 
 	}
 
+	/**
+	 * This method will save the product into elastic server.
+	 * @param product
+	 */
+	private void doSingleCommit(HashMap<String, Object> product) {
+		IndexRequestBuilder indexRequestBuilder = client.prepareIndex(INDEX_NAME_TEST, TYPE_NAME_TEST).setSource(product);
+		IndexResponse indexResponse = indexRequestBuilder.execute().actionGet();
+		}
 
 }

@@ -46,20 +46,20 @@ public class ElasticTests {
 		myList.add("D:\\shravan\\files\\parts-bidet.xlsx");
 		myList.add("D:\\shravan\\files\\parts-toilet.xlsx");
 
-		service.CreateSameTypeDataWithMultipleExcel("Home & Garden","Bathroom", "Toilets", myList);
+		//service.CreateSameTypeDataWithMultipleExcel("Home & Garden","Bathroom", "Toilets", myList);
 		System.out.println("Time End with Toilets is "	 + new Date());
 		List<String> tvFile = new ArrayList<String>();
 		tvFile.add("D:\\shravan\\files\\TV_01.xlsx");
 		tvFile.add("D:\\shravan\\files\\TV_Edited_02.xlsx");
 
-		service.CreateSameTypeDataWithMultipleExcel("Electronics","TV and Home Theater", "TV",tvFile );
+		//service.CreateSameTypeDataWithMultipleExcel("Electronics","TV and Home Theater", "TV",tvFile );
 		//service.CreateConfigurationData("Electronics","TV and Home Theater", "TV","" );
 		System.out.println("Time End with TV is " + new Date());
 
 	}
 	@Test
 	public void createConfig() throws Exception {
-		service.CreateConfigurationData("Home & Garden","Bathroom", "Toilets","D:\\shravan\\files\\Configuration_Toilets.xlsx" );
+	//	service.CreateConfigurationData("Home & Garden","Bathroom", "Toilets","D:\\shravan\\files\\Configuration_Toilets.xlsx" );
 		System.out.println("Time End with TV is " + new Date());
 	}
 }
