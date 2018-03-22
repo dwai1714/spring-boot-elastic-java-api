@@ -11,6 +11,10 @@ import com.elastic.dto.GetOfferSearchQueryDTO;
 public interface ProductService {
 	static final String INDEX_NAME = "my_kala";
 	static final String TYPE_NAME = "products";
+
+	static final String INDEX_NAME_TEST = "my_test";
+	static final String TYPE_NAME_TEST = "test_products";
+
 	static final String ATT_ORDER_INDEX_NAME = "my_kala_ord";
 	static final String ORDER_TYPE_NAME = "attributes_order";
 
@@ -27,4 +31,5 @@ public interface ProductService {
 	ConsumerOffer offersSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 	ProductDTO retailerSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO);
 
+	void CreateConfigurationData(String place, String category, String subCategory, String tvFile);
 }

@@ -22,13 +22,11 @@ public class Attributes_Order implements Serializable { String type;
     public Attributes_Order() {
     }
 
-
     public String getType() {
-
         return type;
     }
 
     public void setType(String type) {
         this.type = type;
     }
-   }
+}

@@ -1,17 +1,9 @@
 package com.elastic.util;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 
+import com.elastic.model.Product;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -75,6 +67,7 @@ public class ExcelUtility {
 	}
 
 	public List<String> getHeaders() throws IOException {
+
 		FileInputStream file = new FileInputStream(new File(fileName));
 		XSSFWorkbook workbook = new XSSFWorkbook(file);
 
@@ -185,5 +178,63 @@ public class ExcelUtility {
 		return map;
 	}
 
+	public Map<String, Object> combineListsIntoOrderedMapWithArray(List<String> keys, List<List<Object>> values) {
+		if (keys.size() != values.size())
+			throw new IllegalArgumentException("Cannot combine lists with dissimilar sizes");
+		Map<String, Object> map = new LinkedHashMap<String, Object>();
+		for (int i = 0; i < keys.size(); i++) {
+			map.put(keys.get(i), values.get(i));
+		}
+		return map;
+	}
 
+	public Map<String,Map<String,Object>> createConfigData(List<String> headers) throws IOException {
+		InputStream ExcelFileToRead = new FileInputStream(fileName);
+		XSSFWorkbook wb = new XSSFWorkbook(ExcelFileToRead);
+		Set<Integer> elements = new HashSet<Integer>();
+		Map<Integer,Product> hMap = new HashMap<Integer,Product>();
+		List<Product> alProducts = new ArrayList<Product>();
+
+
+		//
+		XSSFSheet sheet = wb.getSheetAt(0);
+		XSSFRow row;
+		XSSFCell cell;
+
+		Iterator rows = sheet.rowIterator();
+		int rowCount = 0;
+		Map<String,Map<String,Object>> attributes_metadata = new HashMap<String,Map<String, Object>>();
+
+		//loop through rows
+		while (rows.hasNext()) {
+			row = (XSSFRow) rows.next();
+			Map<String,Object> subValues = new HashMap<String,Object>();
+			if(rowCount==0){
+				rowCount++;
+				continue;
+			}
+			Iterator cells = row.cellIterator();
+			int col =0;
+			String  header = null;
+			while (cells.hasNext()) {
+
+				cell = (XSSFCell) cells.next();
+				if(col==0){
+					header = cell.getStringCellValue();
+				}else{
+					if(cell.getCellTypeEnum().equals(CellType.NUMERIC)) {
+						subValues.put(headers.get(col), String.valueOf(Math.round(cell.getNumericCellValue())));
+					}else{
+						subValues.put(headers.get(col), cell.getStringCellValue());
+
+					}
+				}
+
+				col++;
+			}
+			attributes_metadata.put(header,subValues);
+			}
+		return attributes_metadata;
+
+	}
 }

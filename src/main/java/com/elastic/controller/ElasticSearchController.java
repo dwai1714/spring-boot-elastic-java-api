@@ -3,14 +3,11 @@ package com.elastic.controller;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import com.elastic.dto.ConsumerOffer;
-import com.elastic.dto.DeliveryLocationDTO;
+import com.elastic.dto.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import com.elastic.dto.ProductDTO;
-import com.elastic.dto.GetOfferSearchQueryDTO;
 import com.elastic.service.ProductService;
 
 @CrossOrigin
@@ -32,7 +29,8 @@ public class ElasticSearchController {
 
 	@RequestMapping(value = "/textSearch/{type}", method = RequestMethod.GET)
 	public ProductDTO getFullTextResults(@PathVariable String type) {
-		return productService.getProductDTOFullText(type);
+
+	    return productService.getProductDTOFullText(type);
 	}
 
 	@RequestMapping(method = RequestMethod.POST, value = "/partial", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -79,6 +77,21 @@ public class ElasticSearchController {
 		attributes.put("DeliveryMethod",deliveryMethod);
 		getOfferSearchQueryDTO.setAttributes(attributes);
 	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/upload", produces = MediaType.APPLICATION_JSON_VALUE)
+	public void doPartialSearch(@RequestBody UploadDTO uploadDTO) throws Exception {
+		String uploadType = uploadDTO.getUploadType();
+		if("Config".equalsIgnoreCase(uploadType)){
+			productService.CreateConfigurationData(uploadDTO.getPlaceName(),
+					uploadDTO.getCategoryName(),uploadDTO.getSubCategoryName(),uploadDTO.getFileNames().get(0));
+
+		}else{
+			productService.CreateSameTypeDataWithMultipleExcel(uploadDTO.getPlaceName(),uploadDTO.getCategoryName(),
+					uploadDTO.getSubCategoryName(),uploadDTO.getFileNames());
+		}
+		//ProductDTO productDTO = productService.getProductDTOMatchQuery(getOfferSearchQueryDTO);
+			}
+
 
 
 }

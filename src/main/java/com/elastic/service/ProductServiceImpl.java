@@ -48,7 +48,7 @@ public class ProductServiceImpl implements ProductService {
 			private OffersAlgorithm offersAlgorithm ;
 	@Autowired
 	QueryUtility queryUtility;
-	List<HashMap<String,Object>> listOfProducts = new ArrayList<HashMap<String, Object>>();
+	List<HashMap<String,Object>> listOfProducts = null;
 
 	@Override
 	public ProductDTO getProductDTO(String type) {
@@ -367,9 +367,9 @@ public class ProductServiceImpl implements ProductService {
 		List<Entry<String, Integer>> orderList = queryUtility.createOrderList(hits[0],"order");
 		Map<String,String> otherValueList = queryUtility.getAttributeValues(hits[0],"additionalValues");
 		// actual order of attributes
-		Map<String, Integer> order = queryUtility.getOrder(hits[0], "order");
-		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
-		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
+		Map<String, Integer> order = queryUtility.getOrder(hits[0], "Order");
+		Map<String, Integer> range = queryUtility.getOrder(hits[0], "Range");
+		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "Weightage");
 		SearchRequestBuilder plainQBuilder = null;
 			plainQBuilder = createQueries(getOfferSearchQueryDTO, orderList,range);
 		//plainQBuilder.setSize(3000);
@@ -379,7 +379,7 @@ public class ProductServiceImpl implements ProductService {
 		SearchResponse response = plainQBuilder.get();
 		Map<String, List<String>> facets = queryUtility.getFacets(response, orderList,hits[0]);
 		pDTO.setAttributes_orders(attributes_order);
-		createSearchResult(pDTO, order, response, facets,otherValueList);
+			createSearchResult(pDTO, order, response, facets,otherValueList);
 		//Get Offers Alogorithm
 		return pDTO;
 	}
@@ -425,7 +425,7 @@ public class ProductServiceImpl implements ProductService {
 				}//else
 			}
 		}
-		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME).setTypes(TYPE_NAME);
+		SearchRequestBuilder plainBuilder = client.prepareSearch(INDEX_NAME_TEST).setTypes(TYPE_NAME_TEST);
 			plainBuilder.setQuery(QueryBuilders.boolQuery()
 					.must(QueryBuilders.matchQuery("type", getOfferSearchQueryDTO.getProductType()))
 					.mustNot(QueryBuilders.nestedQuery("attributes",QueryBuilders.existsQuery("attributes.Quantity"),ScoreMode.Max)).
@@ -444,14 +444,15 @@ public class ProductServiceImpl implements ProductService {
 		try {
 			headers = excelutil.getHeaders();
 
-			Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
-			for (List<Object> list : combs) {
+			//Set<List<Object>> combs = excelutil.getCombinations(excelutil.getColumnAsArray());
+			List<List<Object>> columnList = excelutil.getColumnAsArray();
+			/*for (List<Object> list : columnList)*/ {
 				HashMap<String,Object> topMap = new HashMap<String,Object>();
 				topMap.put("place", place);
 				topMap.put("type", type);
 				topMap.put("category", category);
 				topMap.put("dummy","yes");
-				Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMap(headers, list);
+				Map<String, Object> excelMap = excelutil.combineListsIntoOrderedMapWithArray(headers, columnList);
 				topMap.put("attributes",excelMap);
 				listOfProducts.add(topMap);
 			}
@@ -465,6 +466,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public void CreateSameTypeDataWithMultipleExcel(String place, String category, String type,
 			List<String> excelFileNames) {
+		listOfProducts = new ArrayList<HashMap<String, Object>>();
 		for (int i = 0; i < excelFileNames.size(); i++) {
 			CreateData(place, category, type, excelFileNames.get(i));
 		}
@@ -474,11 +476,12 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	private void doCommit() {
+
 		BulkRequestBuilder brb = client.prepareBulk();
 		int productCount = 1;
 		for (HashMap<String, Object> product : listOfProducts) {
 			if (productCount < 5000) {
-				brb.add(client.prepareIndex(INDEX_NAME, TYPE_NAME).setSource(product));
+				brb.add(client.prepareIndex(INDEX_NAME_TEST, TYPE_NAME_TEST).setSource(product));
 				productCount++;
 			} else {
 				BulkResponse bulkResponse = brb.execute().actionGet();
@@ -538,8 +541,8 @@ public class ProductServiceImpl implements ProductService {
 		Map<String,String> otherValueList = queryUtility.getAttributeValues(hits[0],"additionalValues");
 		// actual order of attributes
 		Map<String, Integer> order = queryUtility.getOrder(hits[0], "order");
-		Map<String, Integer> range = queryUtility.getOrder(hits[0], "range");
-		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "importance");
+		Map<String, Integer> range = queryUtility.getOrder(hits[0], "Range");
+		Map<String, Integer> importanceMap = queryUtility.getOrder(hits[0], "Weightage");
 		SearchRequestBuilder plainQBuilder = null;
 		plainQBuilder = offerQuery.createOfferQueries(getOfferSearchQueryDTO, orderList,range,importanceMap);
 		plainQBuilder.setSize(3000);
@@ -569,6 +572,30 @@ public class ProductServiceImpl implements ProductService {
 	public ProductDTO retailerSearch(GetOfferSearchQueryDTO getOfferSearchQueryDTO) {
 		offerQuery.createRetailerFilterQuery();
 		return null;
+	}
+
+	@Override
+	public void CreateConfigurationData(String electronics, String tv_and_home_theater, String tv, String excelFileName) {
+		ExcelUtility excelutil = new ExcelUtility();
+		excelutil.setFileName(excelFileName);
+		List<String> headers;
+		try {
+			headers = excelutil.getHeaders();
+			List<List<Object>> columnList = excelutil.getColumnAsArray();
+			HashMap<String,Object> topMap = new HashMap<String,Object>();
+				topMap.put("type", tv);
+				Map<String,Map<String,Object>> excelMap = excelutil.createConfigData(headers);
+				topMap.put("attributes_metadata",excelMap);
+			BulkRequestBuilder brb = client.prepareBulk();
+			brb.add(client.prepareIndex(ATT_ORDER_INDEX_NAME, ORDER_TYPE_NAME).setSource(topMap));
+			BulkResponse bulkResponse = brb.execute().actionGet();
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+
 	}
 
 
